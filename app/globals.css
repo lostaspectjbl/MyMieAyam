@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+/* ===== MMA Custom Theme ===== */
+@theme inline {
+  --color-primary: #E85D24;
+  --color-accent: #F5A623;
+  --color-warm: #FFF8F0;
+  --color-dark: #1A1208;
+  --color-brown: #3D2B1F;
+  --color-muted: #8C6E63;
+
+  --font-display: var(--font-bebas-neue);
+  --font-body: var(--font-nunito);
+}
+
+/* ===== CSS Variables ===== */
+:root {
+  --color-bg: #FFF8F0;
+  --color-text: #3D2B1F;
+  --color-text-muted: #8C6E63;
+}
+
+.dark {
+  --color-bg: #1A1208;
+  --color-text: #FFF8F0;
+  --color-text-muted: #a08878;
+}
+
+/* ===== Base Styles ===== */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body), sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* ===== Selection ===== */
+::selection {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+/* ===== Animations ===== */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 93, 36, 0.4); }
+  50% { box-shadow: 0 0 20px 4px rgba(232, 93, 36, 0.2); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.8s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ===== Glass Effect ===== */
+.glass {
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+}

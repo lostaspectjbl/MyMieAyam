@@ -29,10 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-<<<<<<< HEAD
-, "lib/supabase/createServerClient"  ],
-=======
   ],
->>>>>>> 3890bad16d5943dbf05530da286d739b0c6be5d3
   "exclude": ["node_modules"]
 }

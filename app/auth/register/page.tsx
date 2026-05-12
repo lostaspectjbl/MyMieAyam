@@ -67,13 +67,8 @@ export default function RegisterPage() {
                         REGISTRASI <span className="text-green-500">BERHASIL!</span>
                     </h1>
                     <p className="text-muted dark:text-warm/60">
-<<<<<<< HEAD
-                        Akun kamu sudah siap digunakan. Langsung login dan mulai review warung
-                        mie ayam favoritmu!
-=======
                         Cek email kamu untuk verifikasi akun. Setelah verifikasi, kamu bisa
                         login dan mulai review warung mie ayam favoritmu.
->>>>>>> 3890bad16d5943dbf05530da286d739b0c6be5d3
                     </p>
                     <Link
                         href="/auth/login"
@@ -85,10 +80,7 @@ export default function RegisterPage() {
             </div>
         )
     }
-<<<<<<< HEAD
-=======
 
->>>>>>> 3890bad16d5943dbf05530da286d739b0c6be5d3
     return (
         <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
             <div className="w-full max-w-md space-y-8">

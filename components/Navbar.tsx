@@ -81,6 +81,7 @@ export default function Navbar() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo - kiri */}
+                    <div className="flex md:flex-1 items-center justify-start">
                     <Link href="/" className="flex items-center gap-2 group">
                         <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                             <UtensilsCrossed className="w-5 h-5 text-white" />
@@ -89,6 +90,7 @@ export default function Navbar() {
                             MMA
                         </span>
                     </Link>
+                    </div>
 
                     {/* Desktop Navigation - selalu center */}
                     <div className="hidden md:flex flex-1 items-center justify-center gap-1">
@@ -124,7 +126,7 @@ export default function Navbar() {
                     </div>
 
                     {/* Right Section - kanan */}
-                    <div className="hidden md:flex items-center justify-end gap-3">
+                    <div className="hidden md:flex flex-1 items-center justify-end gap-3">
                         {/* Theme Toggle */}
                         {mounted && (
                             <button

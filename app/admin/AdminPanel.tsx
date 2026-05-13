@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AdminWarungForm from '@/components/AdminWarungForm'
 import PhotoUpload from '@/components/PhotoUpload'
@@ -19,17 +19,26 @@ import {
 } from 'lucide-react'
 import type { Warung, WarungFoto } from '@/types'
 
-export default function AdminPanel() {
-    const [warungs, setWarungs] = useState<Warung[]>([])
-    const [loading, setLoading] = useState(true)
+type WarungData = {
+    id: string
+    nama: string
+    alamat: string
+    deskripsi: string | null
+    maps_embed: string | null
+}
+
+export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[] }) {
+    const [warungs, setWarungs] = useState<Warung[]>(initialWarungs)
+    const [loading, setLoading] = useState(false)
     const [activeTab, setActiveTab] = useState<'list' | 'add'>('list')
     const [editWarung, setEditWarung] = useState<Warung | null>(null)
     const [photoWarungId, setPhotoWarungId] = useState<string | null>(null)
     const [photos, setPhotos] = useState<WarungFoto[]>([])
     const [photosLoading, setPhotosLoading] = useState(false)
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const fetchWarungs = async () => {
+        setLoading(true)
         const { data } = await supabase
             .from('warung')
             .select('*')
@@ -38,16 +47,35 @@ export default function AdminPanel() {
         setLoading(false)
     }
 
-    useEffect(() => {
-        fetchWarungs()
-    }, [])
+    // Tidak perlu fetch saat mount karena data sudah dari server (initialWarungs)
+    // fetchWarungs hanya dipanggil setelah ada perubahan (add/edit/delete)
 
     const handleDelete = async (id: string) => {
         if (!confirm('Yakin ingin menghapus warung ini? Semua foto dan review akan ikut terhapus.'))
             return
 
+        // Optimistic: hapus dari state dulu, baru delete di DB
+        setWarungs(prev => prev.filter(w => w.id !== id))
         await supabase.from('warung').delete().eq('id', id)
-        fetchWarungs()
+    }
+
+    const handleEditSuccess = (updated?: WarungData) => {
+        if (updated) {
+            // Optimistic: langsung update state lokal, tidak perlu fetch ulang
+            setWarungs(prev =>
+                prev.map(w => w.id === updated.id ? { ...w, ...updated } : w)
+            )
+        }
+        setEditWarung(null)
+        setActiveTab('list')
+    }
+
+    const handleAddSuccess = (created?: WarungData) => {
+        if (created) {
+            // Prepend ke list lokal
+            setWarungs(prev => [created as Warung, ...prev])
+        }
+        setActiveTab('list')
     }
 
     const fetchPhotos = async (warungId: string) => {
@@ -132,11 +160,7 @@ export default function AdminPanel() {
                     </h2>
                     <AdminWarungForm
                         warung={editWarung}
-                        onSuccess={() => {
-                            setEditWarung(null)
-                            setActiveTab('list')
-                            fetchWarungs()
-                        }}
+                        onSuccess={editWarung ? handleEditSuccess : handleAddSuccess}
                         onCancel={
                             editWarung
                                 ? () => setEditWarung(null)

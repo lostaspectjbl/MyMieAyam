@@ -7,6 +7,17 @@ import { MapPin, MessageCircle, Star } from 'lucide-react'
 import type { WarungWithRating, WarungFoto } from '@/types'
 import type { Metadata } from 'next'
 
+// Ekstrak URL src dari HTML <iframe> jika data disimpan sebagai kode embed lengkap
+function getMapsEmbedUrl(raw: string): string {
+    if (!raw) return ''
+    const trimmed = raw.trim()
+    if (trimmed.startsWith('<iframe') || trimmed.includes('src=')) {
+        const match = trimmed.match(/src=["']([^"']+)["']/)
+        if (match) return match[1]
+    }
+    return trimmed
+}
+
 type Props = {
     params: Promise<{ id: string }>
 }
@@ -124,7 +135,7 @@ export default async function WarungDetailPage({ params }: Props) {
                         </h2>
                         <div className="rounded-2xl overflow-hidden border border-brown/10 dark:border-warm/10">
                             <iframe
-                                src={warungData.maps_embed}
+                                src={getMapsEmbedUrl(warungData.maps_embed)}
                                 width="100%"
                                 height="300"
                                 style={{ border: 0 }}

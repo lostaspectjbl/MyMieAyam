@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import WarungCard from '@/components/WarungCard'
 import WarungSearch from './WarungSearch'
+import { UtensilsCrossed } from 'lucide-react'
 import type { WarungWithRating } from '@/types'
 import type { Metadata } from 'next'
 
@@ -60,7 +61,9 @@ export default async function WarungPage({ searchParams }: Props) {
                 </>
             ) : (
                 <div className="text-center py-20">
-                    <span className="text-6xl">🍜</span>
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-4">
+                        <UtensilsCrossed className="w-8 h-8 text-primary/50" />
+                    </div>
                     <h3 className="font-display text-2xl text-brown dark:text-warm tracking-wide mt-4">
                         {q ? 'TIDAK DITEMUKAN' : 'BELUM ADA WARUNG'}
                     </h3>

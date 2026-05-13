@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin, MessageCircle } from 'lucide-react'
+import { MapPin, MessageCircle, UtensilsCrossed } from 'lucide-react'
 import StarRating from './StarRating'
 import type { WarungWithRating } from '@/types'
 
@@ -23,8 +23,8 @@ export default function WarungCard({ warung }: WarungCardProps) {
                             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                            <span className="text-4xl">🍜</span>
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                            <UtensilsCrossed className="w-10 h-10 text-brown/20 dark:text-warm/20" />
                         </div>
                     )}
 

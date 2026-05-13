@@ -1,18 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
+type WarungData = {
+    id: string
+    nama: string
+    alamat: string
+    deskripsi: string | null
+    maps_embed: string | null
+}
+
 type Props = {
-    warung?: {
-        id: string
-        nama: string
-        alamat: string
-        deskripsi: string | null
-        maps_embed: string | null
-    } | null
-    onSuccess: () => void
+    warung?: WarungData | null
+    onSuccess: (updated?: WarungData) => void
     onCancel?: () => void
 }
 
@@ -27,9 +29,33 @@ export default function AdminWarungForm({
     const [mapsEmbed, setMapsEmbed] = useState(warung?.maps_embed || '')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
-    const supabase = createClient()
+    const [mapsError, setMapsError] = useState('')
+    const supabase = useMemo(() => createClient(), [])
 
     const isEditing = !!warung
+
+    // Validasi URL Google Maps Embed
+    const validateMapsUrl = (url: string) => {
+        if (!url) {
+            setMapsError('')
+            return true
+        }
+        const isValid = url.includes('google.com/maps/embed') || url.includes('maps.google.com/maps')
+        setMapsError(isValid ? '' : '⚠️ URL harus berupa Google Maps Embed. Lihat panduan di bawah.')
+        return isValid
+    }
+
+    // Auto-extract src dari HTML <iframe> jika user paste kode embed lengkap
+    const handleMapsInput = (raw: string) => {
+        let value = raw.trim()
+        // Deteksi jika paste HTML iframe
+        if (value.startsWith('<iframe') || value.includes('src=')) {
+            const match = value.match(/src=["']([^"']+)["']/)
+            if (match) value = match[1]
+        }
+        setMapsEmbed(value)
+        validateMapsUrl(value)
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -40,6 +66,8 @@ export default function AdminWarungForm({
             return
         }
 
+        if (mapsEmbed && !validateMapsUrl(mapsEmbed)) return
+
         setLoading(true)
 
         const warungData = {
@@ -49,32 +77,45 @@ export default function AdminWarungForm({
             maps_embed: mapsEmbed.trim() || null,
         }
 
-        let result
-
         if (isEditing) {
-            result = await supabase
+            // Pakai .select().single() agar dapat data kembali sekaligus (lebih cepat)
+            const { data, error: err } = await supabase
                 .from('warung')
                 .update(warungData)
                 .eq('id', warung.id)
+                .select()
+                .single()
+
+            setLoading(false)
+
+            if (err) {
+                setError('Gagal menyimpan perubahan. Coba lagi.')
+                return
+            }
+
+            // Kirim data yang sudah diupdate ke parent → tidak perlu fetch ulang
+            onSuccess(data as WarungData)
         } else {
-            result = await supabase.from('warung').insert(warungData).select().single()
-        }
+            const { data, error: err } = await supabase
+                .from('warung')
+                .insert(warungData)
+                .select()
+                .single()
 
-        setLoading(false)
+            setLoading(false)
 
-        if (result.error) {
-            setError('Gagal menyimpan warung. Coba lagi.')
-            return
-        }
+            if (err) {
+                setError('Gagal menambah warung. Coba lagi.')
+                return
+            }
 
-        if (!isEditing) {
             setNama('')
             setAlamat('')
             setDeskripsi('')
             setMapsEmbed('')
-        }
 
-        onSuccess()
+            onSuccess(data as WarungData)
+        }
     }
 
     return (
@@ -127,13 +168,29 @@ export default function AdminWarungForm({
                 <input
                     type="text"
                     value={mapsEmbed}
-                    onChange={(e) => setMapsEmbed(e.target.value)}
-                    placeholder="https://www.google.com/maps/embed?..."
-                    className="w-full px-4 py-3 bg-warm/50 dark:bg-dark/40 border border-brown/10 dark:border-warm/10 rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                    onChange={(e) => {
+                        handleMapsInput(e.target.value)
+                    }}
+                    placeholder="https://www.google.com/maps/embed?pb=..."
+                    className={`w-full px-4 py-3 bg-warm/50 dark:bg-dark/40 border rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${
+                        mapsError
+                            ? 'border-red-400 dark:border-red-500'
+                            : 'border-brown/10 dark:border-warm/10'
+                    }`}
                 />
-                <p className="text-xs text-muted/50 mt-1">
-                    Paste src dari iframe Google Maps
-                </p>
+                {mapsError ? (
+                    <p className="text-xs text-red-500 mt-1.5">{mapsError}</p>
+                ) : (
+                    <div className="mt-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg text-xs text-blue-600 dark:text-blue-400 space-y-1">
+                        <p className="font-semibold">📌 Cara mendapatkan URL Embed:</p>
+                        <ol className="list-decimal list-inside space-y-0.5 text-blue-500/80 dark:text-blue-400/80">
+                            <li>Buka <strong>Google Maps</strong> → cari lokasi warung</li>
+                            <li>Klik <strong>Share</strong> → pilih tab <strong>Embed a map</strong></li>
+                            <li>Klik <strong>Copy HTML</strong> → ambil hanya bagian <code className="bg-blue-500/10 px-1 rounded">src="..."</code></li>
+                            <li>Paste URL-nya di sini (dimulai dengan <code className="bg-blue-500/10 px-1 rounded">https://www.google.com/maps/embed</code>)</li>
+                        </ol>
+                    </div>
+                )}
             </div>
 
             {error && (

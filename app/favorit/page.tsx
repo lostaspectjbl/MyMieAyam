@@ -70,13 +70,15 @@ export default async function FavoritPage() {
                 </div>
             ) : (
                 <div className="text-center py-20">
-                    <span className="text-6xl">💔</span>
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-red-500/10 rounded-2xl mb-4">
+                        <Heart className="w-8 h-8 text-red-400" />
+                    </div>
                     <h3 className="font-display text-2xl text-brown dark:text-warm tracking-wide mt-4">
                         BELUM ADA FAVORIT
                     </h3>
                     <p className="mt-2 text-muted dark:text-warm/60 max-w-md mx-auto">
                         Kamu belum menyimpan warung apapun. Eksplor warung mie ayam dan klik
-                        tombol ❤️ untuk menyimpannya!
+                        tombol favorit untuk menyimpannya!
                     </p>
                     <Link
                         href="/warung"

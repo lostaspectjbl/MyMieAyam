@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Star, Users, Store } from 'lucide-react'
+import { ArrowRight, Star, Users, Store, UtensilsCrossed } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import WarungCard from '@/components/WarungCard'
 import type { WarungWithRating } from '@/types'
@@ -28,7 +28,7 @@ export default async function HomePage() {
           <div className="max-w-3xl mx-auto text-center space-y-6">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 dark:bg-primary/20 rounded-full text-primary text-sm font-medium animate-fade-in">
-              <span className="text-lg">🍜</span>
+              <UtensilsCrossed className="w-4 h-4" />
               Singosari, Malang
             </div>
 
@@ -86,8 +86,10 @@ export default async function HomePage() {
           </div>
         ) : (
           <div className="text-center py-16">
-            <span className="text-6xl">🍜</span>
-            <p className="mt-4 text-muted dark:text-warm/60">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-4">
+              <UtensilsCrossed className="w-8 h-8 text-primary/50" />
+            </div>
+            <p className="text-muted dark:text-warm/60">
               Belum ada warung terdaftar. Segera hadir!
             </p>
           </div>

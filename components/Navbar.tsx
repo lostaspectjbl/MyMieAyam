@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -22,7 +23,9 @@ export default function Navbar() {
     const [profile, setProfile] = useState<Profile | null>(null)
     const [mounted, setMounted] = useState(false)
     const { theme, setTheme } = useTheme()
-    const supabase = createClient()
+    const router = useRouter()
+    // useMemo agar satu instance stabil sepanjang lifecycle Navbar
+    const supabase = useMemo(() => createClient(), [])
 
     useEffect(() => {
         setMounted(true)
@@ -68,7 +71,8 @@ export default function Navbar() {
         await supabase.auth.signOut()
         setUser(null)
         setProfile(null)
-        window.location.href = '/'
+        router.push('/')
+        router.refresh()
     }
 
     const navLinks = [

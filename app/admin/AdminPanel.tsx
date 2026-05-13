@@ -16,6 +16,7 @@ import {
     Store,
     ChevronDown,
     ChevronUp,
+    UtensilsCrossed,
 } from 'lucide-react'
 import type { Warung, WarungFoto } from '@/types'
 
@@ -179,8 +180,10 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
                         </div>
                     ) : warungs.length === 0 ? (
                         <div className="text-center py-16">
-                            <span className="text-5xl">🍜</span>
-                            <p className="mt-4 text-muted dark:text-warm/50">
+                            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-4">
+                                <UtensilsCrossed className="w-8 h-8 text-primary/40" />
+                            </div>
+                            <p className="text-muted dark:text-warm/50">
                                 Belum ada warung. Klik &quot;Tambah Warung&quot; untuk mulai.
                             </p>
                         </div>

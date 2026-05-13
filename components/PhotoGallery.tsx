@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Camera } from 'lucide-react'
 import type { WarungFoto } from '@/types'
 
 type Props = {
@@ -15,9 +15,11 @@ export default function PhotoGallery({ fotos }: Props) {
 
     if (fotos.length === 0) {
         return (
-            <div className="aspect-video bg-brown/5 dark:bg-warm/5 rounded-2xl flex items-center justify-center">
+        <div className="aspect-video bg-brown/5 dark:bg-warm/5 rounded-2xl flex items-center justify-center">
                 <div className="text-center">
-                    <span className="text-5xl">📷</span>
+                    <div className="inline-flex items-center justify-center w-14 h-14 bg-brown/8 dark:bg-warm/8 rounded-2xl mb-2">
+                        <Camera className="w-7 h-7 text-muted/40 dark:text-warm/20" />
+                    </div>
                     <p className="mt-2 text-muted dark:text-warm/50 text-sm">
                         Belum ada foto
                     </p>

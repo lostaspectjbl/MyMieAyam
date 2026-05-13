@@ -38,11 +38,28 @@
 }
 
 /* ===== Base Styles ===== */
+html {
+  /* Transisi saat dark/light class di-toggle oleh next-themes */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body), sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Pastikan semua elemen ikut transisi saat theme berganti */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: ease;
+  transition-duration: 200ms;
+}
+
+/* Kecualikan animasi yang tidak boleh kena override transisi */
+.animate-spin, .animate-ping, .animate-bounce, .animate-pulse {
+  transition: none !important;
 }
 
 /* ===== Scrollbar ===== */

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Send, Loader2 } from 'lucide-react'
+import { Send, Loader2, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import StarRating from './StarRating'
 
@@ -58,9 +58,11 @@ export default function ReviewForm({
 
     if (success) {
         return (
-            <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6 text-center">
-                <span className="text-3xl">🎉</span>
-                <p className="mt-2 text-green-700 dark:text-green-400 font-medium">
+        <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6 text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-green-500/15 rounded-full mb-3">
+                    <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
+                <p className="text-green-700 dark:text-green-400 font-medium">
                     Review berhasil dikirim!
                 </p>
                 <p className="text-sm text-green-600 dark:text-green-500 mt-1">

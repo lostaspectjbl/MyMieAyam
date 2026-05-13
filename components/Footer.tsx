@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { UtensilsCrossed, MapPin, Mail } from 'lucide-react'
+import { UtensilsCrossed, MapPin, Mail, Heart } from 'lucide-react'
 
 export default function Footer() {
     return (
@@ -69,8 +69,9 @@ export default function Footer() {
 
                 {/* Bottom Bar */}
                 <div className="border-t border-brown/10 dark:border-warm/10 mt-8 pt-8 text-center">
-                    <p className="text-muted/60 dark:text-warm/40 text-sm">
-                        © {new Date().getFullYear()} My MieAyam (MMA). Dibuat dengan ❤️
+                    <p className="text-muted/60 dark:text-warm/40 text-sm inline-flex items-center justify-center gap-1.5 flex-wrap">
+                        © {new Date().getFullYear()} My MieAyam (MMA). Dibuat dengan
+                        <Heart className="w-3.5 h-3.5 text-red-400 fill-red-400 inline" />
                         untuk UMKM lokal.
                     </p>
                 </div>

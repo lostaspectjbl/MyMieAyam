@@ -1,8 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+
+// Singleton — dibuat sekali per halaman, tidak per mount komponen
+const supabase = createClient()
 
 type WarungData = {
     id: string
@@ -30,7 +33,6 @@ export default function AdminWarungForm({
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [mapsError, setMapsError] = useState('')
-    const supabase = useMemo(() => createClient(), [])
 
     const isEditing = !!warung
 
@@ -41,7 +43,7 @@ export default function AdminWarungForm({
             return true
         }
         const isValid = url.includes('google.com/maps/embed') || url.includes('maps.google.com/maps')
-        setMapsError(isValid ? '' : '⚠️ URL harus berupa Google Maps Embed. Lihat panduan di bawah.')
+        setMapsError(isValid ? '' : 'URL harus berupa Google Maps Embed. Lihat panduan di bawah.')
         return isValid
     }
 
@@ -182,7 +184,10 @@ export default function AdminWarungForm({
                     <p className="text-xs text-red-500 mt-1.5">{mapsError}</p>
                 ) : (
                     <div className="mt-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg text-xs text-blue-600 dark:text-blue-400 space-y-1">
-                        <p className="font-semibold">📌 Cara mendapatkan URL Embed:</p>
+                        <p className="font-semibold flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5" />
+                            Cara mendapatkan URL Embed:
+                        </p>
                         <ol className="list-decimal list-inside space-y-0.5 text-blue-500/80 dark:text-blue-400/80">
                             <li>Buka <strong>Google Maps</strong> → cari lokasi warung</li>
                             <li>Klik <strong>Share</strong> → pilih tab <strong>Embed a map</strong></li>

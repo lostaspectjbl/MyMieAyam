@@ -4,6 +4,7 @@ import { useState } from 'react'
 import ReviewForm from '@/components/ReviewForm'
 import ReviewList from '@/components/ReviewList'
 import FavoriteButton from '@/components/FavoriteButton'
+import { CheckCircle2 } from 'lucide-react'
 
 type Props = {
     warungId: string
@@ -44,8 +45,9 @@ export default function WarungDetailClient({
                         />
                     </div>
                 ) : userId && hasReviewed ? (
-                    <div className="bg-green-500/5 border border-green-500/20 rounded-xl px-5 py-3 text-sm text-green-700 dark:text-green-400">
-                        ✅ Kamu sudah review warung ini
+                    <div className="flex items-center gap-2 bg-green-500/5 border border-green-500/20 rounded-xl px-5 py-3 text-sm text-green-700 dark:text-green-400">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        Kamu sudah memberikan review untuk warung ini
                     </div>
                 ) : null}
 

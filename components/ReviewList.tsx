@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import StarRating from './StarRating'
-import { User as UserIcon, Loader2 } from 'lucide-react'
+import { User as UserIcon, Loader2, MessageSquare } from 'lucide-react'
 import type { ReviewWithProfile } from '@/types'
 
 type Props = {
@@ -67,11 +67,13 @@ export default function ReviewList({ warungId, refreshKey }: Props) {
     if (reviews.length === 0) {
         return (
             <div className="text-center py-10">
-                <span className="text-4xl">💬</span>
-                <p className="mt-3 text-muted dark:text-warm/50">
-                    Belum ada review. Jadilah yang pertama!
-                </p>
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-brown/5 dark:bg-warm/5 rounded-2xl mb-3">
+                <MessageSquare className="w-7 h-7 text-muted/40 dark:text-warm/20" />
             </div>
+            <p className="text-muted dark:text-warm/50">
+                Belum ada review. Jadilah yang pertama!
+            </p>
+        </div>
         )
     }
 

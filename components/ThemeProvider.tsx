@@ -5,7 +5,13 @@ import { type ReactNode } from 'react'
 
 export default function ThemeProvider({ children }: { children: ReactNode }) {
     return (
-        <NextThemesProvider attribute="class" defaultTheme="system" enableSystem={true} storageKey="mma-theme">
+        <NextThemesProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem={true}
+            storageKey="mma-theme"
+            disableTransitionOnChange={false}
+        >
             {children}
         </NextThemesProvider>
     )

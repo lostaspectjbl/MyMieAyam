@@ -31,18 +31,15 @@ const nextConfig: NextConfig = {
         source: '/(.*)',
         headers: [
           {
-            // Izinkan iframe Google Maps di halaman kita
-            // Tapi cegah website MMA di-embed di website lain (anti-clickjacking)
+            // Izinkan Google Maps embed, cegah website MMA di-embed di tempat lain
+            // Tidak pakai script-src restriction terpisah karena memblokir
+            // inline script next-themes yang inject class 'dark' ke <html>
             key: 'Content-Security-Policy',
             value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "font-src 'self' https://fonts.gstatic.com",
+              "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://placehold.co",
-              // Izinkan iframe dari Google Maps
               "frame-src 'self' https://www.google.com https://maps.google.com https://google.com",
-              "connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co",
+              "connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://fonts.googleapis.com https://fonts.gstatic.com",
             ].join('; '),
           },
         ],

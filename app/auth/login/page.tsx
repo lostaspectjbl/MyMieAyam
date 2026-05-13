@@ -29,7 +29,7 @@ export default function LoginPage() {
         setLoading(false)
 
         if (authError) {
-            setError('Email atau password salah. Coba lagi.')
+            setError('Email atau password salah. Coba lagi, atau reset password jika lupa.')
             return
         }
 
@@ -111,10 +111,26 @@ export default function LoginPage() {
                         </div>
                     </div>
 
+                    <div className="flex items-center justify-between">
+                        <span />
+                        <Link
+                            href="/auth/forgot-password"
+                            className="text-xs text-primary hover:underline font-medium"
+                        >
+                            Lupa Password?
+                        </Link>
+                    </div>
+
                     {error && (
-                        <p className="text-red-500 text-sm bg-red-500/10 px-4 py-2.5 rounded-lg">
-                            {error}
-                        </p>
+                        <div className="text-red-500 text-sm bg-red-500/10 px-4 py-2.5 rounded-lg space-y-1">
+                            <p>{error}</p>
+                            <Link
+                                href="/auth/forgot-password"
+                                className="text-red-400 hover:text-red-300 underline text-xs font-medium"
+                            >
+                                Reset password di sini
+                            </Link>
+                        </div>
                     )}
 
                     <button

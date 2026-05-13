@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { LogIn, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react'
-import { createBrowserClient } from '@supabase/ssr'
 
 
 export default function LoginPage() {

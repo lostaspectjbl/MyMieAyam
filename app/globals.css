@@ -4,8 +4,9 @@
 @theme inline {
   --color-primary: #E85D24;
   --color-accent: #F5A623;
-  --color-warm: #FFF8F0;
-  --color-dark: #1A1208;
+  /* warm & dark are dynamic — resolved from CSS vars per mode */
+  --color-warm: var(--theme-warm);
+  --color-dark: var(--theme-dark);
   --color-brown: #3D2B1F;
   --color-muted: #8C6E63;
 
@@ -13,17 +14,27 @@
   --font-body: var(--font-nunito);
 }
 
-/* ===== CSS Variables ===== */
+/* ===== CSS Variables (Light Mode Default) ===== */
 :root {
+  /* Dynamic palette */
+  --theme-warm: #3D2B1F;   /* In light mode: warm = dark brown (readable on light bg) */
+  --theme-dark: #FFF8F0;   /* In light mode: dark = cream/white bg */
+
   --color-bg: #FFF8F0;
   --color-text: #3D2B1F;
   --color-text-muted: #8C6E63;
+  color-scheme: light;
 }
 
 .dark {
+  /* Dynamic palette */
+  --theme-warm: #FFF8F0;   /* In dark mode: warm = cream/white (readable on dark bg) */
+  --theme-dark: #1A1208;   /* In dark mode: dark = very dark brown bg */
+
   --color-bg: #1A1208;
   --color-text: #FFF8F0;
   --color-text-muted: #a08878;
+  color-scheme: dark;
 }
 
 /* ===== Base Styles ===== */

@@ -79,8 +79,8 @@ export default function Navbar() {
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 glass bg-warm/80 dark:bg-dark/80 border-b border-brown/10 dark:border-warm/10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-between h-16">
-                    {/* Logo */}
+                <div className="grid grid-cols-3 items-center h-16">
+                    {/* Logo - kiri */}
                     <Link href="/" className="flex items-center gap-2 group">
                         <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                             <UtensilsCrossed className="w-5 h-5 text-white" />
@@ -90,8 +90,8 @@ export default function Navbar() {
                         </span>
                     </Link>
 
-                    {/* Desktop Navigation */}
-                    <div className="hidden md:flex items-center gap-1">
+                    {/* Desktop Navigation - selalu center */}
+                    <div className="hidden md:flex items-center justify-center gap-1">
                         {navLinks.map((link) => (
                             <Link
                                 key={link.href}
@@ -123,8 +123,8 @@ export default function Navbar() {
                         )}
                     </div>
 
-                    {/* Right Section */}
-                    <div className="hidden md:flex items-center gap-3">
+                    {/* Right Section - kanan */}
+                    <div className="hidden md:flex items-center justify-end gap-3">
                         {/* Theme Toggle */}
                         {mounted && (
                             <button
@@ -164,7 +164,7 @@ export default function Navbar() {
                     </div>
 
                     {/* Mobile Menu Button */}
-                    <div className="md:hidden flex items-center gap-2">
+                    <div className="md:hidden flex items-center justify-end gap-2">
                         {mounted && (
                             <button
                                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

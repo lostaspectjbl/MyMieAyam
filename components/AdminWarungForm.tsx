@@ -1,5 +1,6 @@
 'use client'
 
+import * as React from 'react'
 import { useState } from 'react'
 import { Loader2, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -26,6 +27,9 @@ export default function AdminWarungForm({
     onSuccess,
     onCancel,
 }: Props) {
+    // Gunakan useMemo agar instance konsisten dan aman dalam siklus hidup komponen
+    const supabase = React.useMemo(() => createClient(), [])
+
     const [nama, setNama] = useState(warung?.nama || '')
     const [alamat, setAlamat] = useState(warung?.alamat || '')
     const [deskripsi, setDeskripsi] = useState(warung?.deskripsi || '')
@@ -72,51 +76,54 @@ export default function AdminWarungForm({
 
         setLoading(true)
 
-        const warungData = {
-            nama: nama.trim(),
-            alamat: alamat.trim(),
-            deskripsi: deskripsi.trim() || null,
-            maps_embed: mapsEmbed.trim() || null,
-        }
-
-        if (isEditing) {
-            // Pakai .select().single() agar dapat data kembali sekaligus (lebih cepat)
-            const { data, error: err } = await supabase
-                .from('warung')
-                .update(warungData)
-                .eq('id', warung.id)
-                .select()
-                .single()
-
-            setLoading(false)
-
-            if (err) {
-                setError('Gagal menyimpan perubahan. Coba lagi.')
-                return
+        try {
+            const warungData = {
+                nama: nama.trim(),
+                alamat: alamat.trim(),
+                deskripsi: deskripsi.trim() || null,
+                maps_embed: mapsEmbed.trim() || null,
             }
 
-            // Kirim data yang sudah diupdate ke parent → tidak perlu fetch ulang
-            onSuccess(data as WarungData)
-        } else {
-            const { data, error: err } = await supabase
-                .from('warung')
-                .insert(warungData)
-                .select()
-                .single()
+            if (isEditing && warung?.id) {
+                // Pakai .select().single() agar dapat data kembali sekaligus (lebih cepat)
+                const { data, error: err } = await supabase
+                    .from('warung')
+                    .update(warungData)
+                    .eq('id', warung.id)
+                    .select()
+                    .single()
 
-            setLoading(false)
+                if (err) {
+                    setError('Gagal menyimpan perubahan. Coba lagi: ' + err.message)
+                    return
+                }
 
-            if (err) {
-                setError('Gagal menambah warung. Coba lagi.')
-                return
+                // Kirim data yang sudah diupdate ke parent → tidak perlu fetch ulang
+                if (data) onSuccess(data as WarungData)
+            } else {
+                const { data, error: err } = await supabase
+                    .from('warung')
+                    .insert(warungData)
+                    .select()
+                    .single()
+
+                if (err) {
+                    setError('Gagal menambah warung. Coba lagi: ' + err.message)
+                    return
+                }
+
+                setNama('')
+                setAlamat('')
+                setDeskripsi('')
+                setMapsEmbed('')
+
+                if (data) onSuccess(data as WarungData)
             }
-
-            setNama('')
-            setAlamat('')
-            setDeskripsi('')
-            setMapsEmbed('')
-
-            onSuccess(data as WarungData)
+        } catch (err: any) {
+            console.error('Terjadi kesalahan saat memproses form:', err)
+            setError(err.message || 'Terjadi kesalahan sistem. Silakan coba lagi.')
+        } finally {
+            setLoading(false)
         }
     }
 

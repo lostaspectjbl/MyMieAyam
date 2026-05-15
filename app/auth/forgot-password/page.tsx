@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
         setLoading(false)
 
         if (resetError) {
-            setError('Gagal mengirim email reset. Pastikan email sudah terdaftar.')
+            setError(resetError.message || 'Gagal mengirim email reset.')
             return
         }
 

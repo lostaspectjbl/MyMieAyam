@@ -2,9 +2,11 @@ import Link from 'next/link'
 import { ArrowRight, Star, Users, Store, UtensilsCrossed } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import WarungCard from '@/components/WarungCard'
+import WarungListSkeleton from '@/components/WarungListSkeleton'
+import { Suspense } from 'react'
 import type { WarungWithRating } from '@/types'
 
-export default async function HomePage() {
+async function TopWarungList() {
   const supabase = await createClient()
 
   const { data: topWarung } = await supabase
@@ -14,6 +16,25 @@ export default async function HomePage() {
     .limit(6)
 
   const warungList = (topWarung as WarungWithRating[]) || []
+
+  if (warungList.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted dark:text-warm/60">Belum ada data warung.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {warungList.map((warung, index) => (
+        <WarungCard key={warung.id} warung={warung} priority={index < 3} />
+      ))}
+    </div>
+  )
+}
+
+export default function HomePage() {
 
   return (
     <>
@@ -78,22 +99,9 @@ export default async function HomePage() {
           </p>
         </div>
 
-        {warungList.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {warungList.map((warung, index) => (
-              <WarungCard key={warung.id} warung={warung} priority={index < 3} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-4">
-              <UtensilsCrossed className="w-8 h-8 text-primary/50" />
-            </div>
-            <p className="text-muted dark:text-warm/60">
-              Belum ada warung terdaftar. Segera hadir!
-            </p>
-          </div>
-        )}
+        <Suspense fallback={<WarungListSkeleton count={6} />}>
+          <TopWarungList />
+        </Suspense>
 
         <div className="text-center mt-10">
           <Link

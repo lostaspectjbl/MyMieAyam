@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import WarungCard from '@/components/WarungCard'
+import WarungListSkeleton from '@/components/WarungListSkeleton'
 import WarungSearch from './WarungSearch'
+import { Suspense } from 'react'
 import { UtensilsCrossed } from 'lucide-react'
 import type { WarungWithRating } from '@/types'
 import type { Metadata } from 'next'
@@ -15,8 +17,7 @@ type Props = {
     searchParams: Promise<{ q?: string }>
 }
 
-export default async function WarungPage({ searchParams }: Props) {
-    const { q } = await searchParams
+async function WarungListContent({ q }: { q?: string }) {
     const supabase = await createClient()
 
     let query = supabase
@@ -30,6 +31,42 @@ export default async function WarungPage({ searchParams }: Props) {
 
     const { data } = await query
     const warungList = (data as WarungWithRating[]) || []
+
+    if (warungList.length === 0) {
+        return (
+            <div className="text-center py-20">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-4">
+                    <UtensilsCrossed className="w-8 h-8 text-primary/50" />
+                </div>
+                <h3 className="font-display text-2xl text-brown dark:text-warm tracking-wide mt-4">
+                    {q ? 'TIDAK DITEMUKAN' : 'BELUM ADA WARUNG'}
+                </h3>
+                <p className="mt-2 text-muted dark:text-warm/60">
+                    {q
+                        ? `Warung dengan nama "${q}" tidak ditemukan. Coba kata kunci lain.`
+                        : 'Warung mie ayam akan segera ditambahkan!'}
+                </p>
+            </div>
+        )
+    }
+
+    return (
+        <>
+            <p className="text-sm text-muted dark:text-warm/50 mb-6">
+                {q ? `Hasil pencarian "${q}": ` : ''}
+                {warungList.length} warung ditemukan
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {warungList.map((warung, index) => (
+                    <WarungCard key={warung.id} warung={warung} priority={index < 4} />
+                ))}
+            </div>
+        </>
+    )
+}
+
+export default async function WarungPage({ searchParams }: Props) {
+    const { q } = await searchParams
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
@@ -47,33 +84,13 @@ export default async function WarungPage({ searchParams }: Props) {
             <WarungSearch initialQuery={q || ''} />
 
             {/* Results */}
-            {warungList.length > 0 ? (
-                <>
-                    <p className="text-sm text-muted dark:text-warm/50 mb-6">
-                        {q ? `Hasil pencarian "${q}": ` : ''}
-                        {warungList.length} warung ditemukan
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {warungList.map((warung, index) => (
-                            <WarungCard key={warung.id} warung={warung} priority={index < 4} />
-                        ))}
-                    </div>
-                </>
-            ) : (
-                <div className="text-center py-20">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-4">
-                        <UtensilsCrossed className="w-8 h-8 text-primary/50" />
-                    </div>
-                    <h3 className="font-display text-2xl text-brown dark:text-warm tracking-wide mt-4">
-                        {q ? 'TIDAK DITEMUKAN' : 'BELUM ADA WARUNG'}
-                    </h3>
-                    <p className="mt-2 text-muted dark:text-warm/60">
-                        {q
-                            ? `Warung dengan nama "${q}" tidak ditemukan. Coba kata kunci lain.`
-                            : 'Warung mie ayam akan segera ditambahkan!'}
-                    </p>
+            <Suspense key={q} fallback={
+                <div className="mt-8">
+                    <WarungListSkeleton count={6} />
                 </div>
-            )}
+            }>
+                <WarungListContent q={q} />
+            </Suspense>
         </div>
     )
 }

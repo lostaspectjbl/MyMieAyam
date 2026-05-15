@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { revalidateWarungCache } from '@/app/actions/warung'
 import AdminWarungForm from '@/components/AdminWarungForm'
 import PhotoUpload from '@/components/PhotoUpload'
 import Image from 'next/image'
@@ -37,6 +39,7 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
     const [photos, setPhotos] = useState<WarungFoto[]>([])
     const [photosLoading, setPhotosLoading] = useState(false)
     const supabase = useMemo(() => createClient(), [])
+    const router = useRouter()
 
     const fetchWarungs = async () => {
         setLoading(true)
@@ -58,6 +61,10 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
         // Optimistic: hapus dari state dulu, baru delete di DB
         setWarungs(prev => prev.filter(w => w.id !== id))
         await supabase.from('warung').delete().eq('id', id)
+        
+        // Refresh cache untuk pengunjung publik
+        await revalidateWarungCache()
+        router.refresh()
     }
 
     const handleEditSuccess = (updated?: WarungData) => {
@@ -66,6 +73,8 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
             setWarungs(prev =>
                 prev.map(w => w.id === updated.id ? { ...w, ...updated } : w)
             )
+            // Refresh cache untuk pengunjung publik
+            revalidateWarungCache().then(() => router.refresh())
         }
         setEditWarung(null)
         setActiveTab('list')
@@ -75,6 +84,8 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
         if (created) {
             // Prepend ke list lokal
             setWarungs(prev => [created as Warung, ...prev])
+            // Refresh cache untuk pengunjung publik
+            revalidateWarungCache().then(() => router.refresh())
         }
         setActiveTab('list')
     }

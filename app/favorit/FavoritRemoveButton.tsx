@@ -20,7 +20,7 @@ export default function FavoritRemoveButton({ favoritId }: Props) {
     return (
         <button
             onClick={handleRemove}
-            className="absolute top-3 right-3 z-10 p-2 bg-red-500/90 hover:bg-red-600 text-white rounded-full shadow-lg transition-all hover:scale-110"
+            className="absolute top-3 left-3 z-10 p-2 bg-red-500/90 hover:bg-red-600 text-white rounded-full shadow-lg transition-all hover:scale-110"
             title="Hapus dari favorit"
         >
             <Trash2 className="w-4 h-4" />

@@ -17,15 +17,45 @@ export default function ReviewList({ warungId, refreshKey }: Props) {
     const supabase = createClient()
 
     const fetchReviews = async () => {
-        const { data } = await supabase
+        // 1. Fetch reviews
+        const { data: reviewsData, error } = await supabase
             .from('reviews')
-            .select('*, profiles(username, avatar_url)')
+            .select('*')
             .eq('warung_id', warungId)
             .order('created_at', { ascending: false })
 
-        if (data) {
-            setReviews(data as unknown as ReviewWithProfile[])
+        if (error) {
+            console.error('Error fetching reviews:', error)
+            setLoading(false)
+            return
         }
+
+        if (reviewsData && reviewsData.length > 0) {
+            // 2. Fetch profiles untuk user_id yang ada di reviews
+            const userIds = [...new Set(reviewsData.map((r) => r.user_id))]
+            
+            const { data: profilesData } = await supabase
+                .from('profiles')
+                .select('id, username, avatar_url')
+                .in('id', userIds)
+
+            // 3. Gabungkan data secara manual (karena reviews dan profiles tidak memiliki foreign key langsung)
+            const merged = reviewsData.map((review) => {
+                const userProfile = profilesData?.find((p) => p.id === review.user_id)
+                return {
+                    ...review,
+                    profiles: userProfile ? {
+                        username: userProfile.username,
+                        avatar_url: userProfile.avatar_url
+                    } : null
+                }
+            })
+
+            setReviews(merged as unknown as ReviewWithProfile[])
+        } else {
+            setReviews([])
+        }
+        
         setLoading(false)
     }
 

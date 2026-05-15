@@ -6,9 +6,10 @@ import type { WarungWithRating } from '@/types'
 
 type WarungCardProps = {
     warung: WarungWithRating
+    priority?: boolean
 }
 
-export default function WarungCard({ warung }: WarungCardProps) {
+export default function WarungCard({ warung, priority = false }: WarungCardProps) {
     return (
         <Link href={`/warung/${warung.id}`} className="group block">
             <div className="bg-white dark:bg-dark/60 rounded-2xl overflow-hidden border border-brown/10 dark:border-warm/10 shadow-sm hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 hover:-translate-y-1">
@@ -19,6 +20,7 @@ export default function WarungCard({ warung }: WarungCardProps) {
                             src={warung.foto_thumbnail}
                             alt={warung.nama}
                             fill
+                            priority={priority}
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         />

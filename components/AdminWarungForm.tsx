@@ -46,6 +46,13 @@ export default function AdminWarungForm({
             setMapsError('')
             return true
         }
+        
+        // Tolak secara eksplisit jika mengandung tag HTML (mencegah WAF memblokir payload)
+        if (url.includes('<') || url.includes('>')) {
+            setMapsError('Mohon masukkan HANYA link URL-nya saja (https://...), bukan kode HTML <iframe>.')
+            return false
+        }
+
         const isValid = url.includes('google.com/maps/embed') || url.includes('maps.google.com/maps')
         setMapsError(isValid ? '' : 'URL harus berupa Google Maps Embed. Lihat panduan di bawah.')
         return isValid
@@ -55,9 +62,16 @@ export default function AdminWarungForm({
     const handleMapsInput = (raw: string) => {
         let value = raw.trim()
         // Deteksi jika paste HTML iframe
-        if (value.startsWith('<iframe') || value.includes('src=')) {
-            const match = value.match(/src=["']([^"']+)["']/)
-            if (match) value = match[1]
+        if (value.toLowerCase().includes('<iframe') || value.toLowerCase().includes('src=')) {
+            // Coba dengan tanda kutip
+            let match = value.match(/src=["']([^"']+)["']/)
+            if (match) {
+                value = match[1]
+            } else {
+                // Coba tanpa tanda kutip
+                match = value.match(/src=([^ >]+)/)
+                if (match) value = match[1]
+            }
         }
         setMapsEmbed(value)
         validateMapsUrl(value)

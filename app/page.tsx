@@ -80,8 +80,8 @@ export default async function HomePage() {
 
         {warungList.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {warungList.map((warung) => (
-              <WarungCard key={warung.id} warung={warung} />
+            {warungList.map((warung, index) => (
+              <WarungCard key={warung.id} warung={warung} priority={index < 3} />
             ))}
           </div>
         ) : (

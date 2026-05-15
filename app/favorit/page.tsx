@@ -56,13 +56,13 @@ export default async function FavoritPage() {
 
             {warungList.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {warungList.map((warung) => {
+                    {warungList.map((warung, index) => {
                         const favoritId = favorits?.find(
                             (f) => f.warung_id === warung.id
                         )?.id
                         return (
                             <div key={warung.id} className="relative">
-                                <WarungCard warung={warung} />
+                                <WarungCard warung={warung} priority={index < 4} />
                                 {favoritId && <FavoritRemoveButton favoritId={favoritId} />}
                             </div>
                         )

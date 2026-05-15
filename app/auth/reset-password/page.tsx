@@ -22,15 +22,36 @@ export default function ResetPasswordPage() {
 
     useEffect(() => {
         let isMounted = true
+        let timeout: NodeJS.Timeout
 
-        // Cek session saat ini secepatnya
-        const checkInitialSession = async () => {
+        const checkSession = async () => {
+            // Cek session dari cookie/local storage
             const { data: { session } } = await supabase.auth.getSession()
-            if (session && isMounted) {
-                setSessionReady(true)
+            
+            if (session) {
+                if (isMounted) setSessionReady(true)
+            } else {
+                // Jika tidak ada session, tunggu sebentar (mungkin hash sedang diproses)
+                // lalu cek user secara eksplisit
+                timeout = setTimeout(async () => {
+                    if (!isMounted) return
+                    
+                    // Gunakan ref atau abaikan race condition jika sudah ready lewat onAuthStateChange
+                    const { data: { user } } = await supabase.auth.getUser()
+                    
+                    if (isMounted) {
+                        if (user) {
+                            setSessionReady(true)
+                        } else {
+                            // Jika benar-benar tidak ada user, berarti link invalid
+                            setSessionError(true)
+                        }
+                    }
+                }, 2000)
             }
         }
-        checkInitialSession()
+
+        checkSession()
 
         // Supabase SSR menangani token dari URL hash secara otomatis
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -39,27 +60,10 @@ export default function ResetPasswordPage() {
             }
         })
 
-        // Timeout jika tidak ada event recovery atau lambat
-        const timeout = setTimeout(() => {
-            if (isMounted) {
-                setSessionReady((prevReady) => {
-                    if (!prevReady) {
-                        supabase.auth.getUser().then(({ data: { user } }) => {
-                            if (isMounted) {
-                                if (user) setSessionReady(true)
-                                else setSessionError(true)
-                            }
-                        })
-                    }
-                    return prevReady
-                })
-            }
-        }, 3000)
-
         return () => {
             isMounted = false
             subscription.unsubscribe()
-            clearTimeout(timeout)
+            if (timeout) clearTimeout(timeout)
         }
     }, [supabase])
 

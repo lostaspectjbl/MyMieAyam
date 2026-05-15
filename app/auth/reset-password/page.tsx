@@ -1,5 +1,6 @@
 'use client'
 
+import * as React from 'react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -17,39 +18,50 @@ export default function ResetPasswordPage() {
     const [sessionReady, setSessionReady] = useState(false)
     const [sessionError, setSessionError] = useState(false)
     const router = useRouter()
-    const supabase = createClient()
+    const supabase = React.useMemo(() => createClient(), [])
 
     useEffect(() => {
+        let isMounted = true
+
+        // Cek session saat ini secepatnya
+        const checkInitialSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session && isMounted) {
+                setSessionReady(true)
+            }
+        }
+        checkInitialSession()
+
         // Supabase SSR menangani token dari URL hash secara otomatis
-        // Kita hanya perlu menunggu session recovery selesai
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'PASSWORD_RECOVERY') {
-                setSessionReady(true)
-            } else if (event === 'SIGNED_IN' && session) {
-                // Fallback: jika sudah signed in dari recovery link
-                setSessionReady(true)
+            if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
+                if (isMounted) setSessionReady(true)
             }
         })
 
-        // Timeout jika tidak ada event recovery
+        // Timeout jika tidak ada event recovery atau lambat
         const timeout = setTimeout(() => {
-            if (!sessionReady) {
-                // Cek apakah user sudah logged in (link mungkin sudah di-process)
-                supabase.auth.getUser().then(({ data: { user } }) => {
-                    if (user) {
-                        setSessionReady(true)
-                    } else {
-                        setSessionError(true)
+            if (isMounted) {
+                setSessionReady((prevReady) => {
+                    if (!prevReady) {
+                        supabase.auth.getUser().then(({ data: { user } }) => {
+                            if (isMounted) {
+                                if (user) setSessionReady(true)
+                                else setSessionError(true)
+                            }
+                        })
                     }
+                    return prevReady
                 })
             }
         }, 3000)
 
         return () => {
+            isMounted = false
             subscription.unsubscribe()
             clearTimeout(timeout)
         }
-    }, [])
+    }, [supabase])
 
     const handleReset = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -67,22 +79,26 @@ export default function ResetPasswordPage() {
 
         setLoading(true)
 
-        const { error: updateError } = await supabase.auth.updateUser({
-            password,
-        })
+        try {
+            const { error: updateError } = await supabase.auth.updateUser({
+                password,
+            })
 
-        setLoading(false)
+            if (updateError) {
+                setError(updateError.message || 'Gagal mengubah password. Coba lagi.')
+                return
+            }
 
-        if (updateError) {
-            setError('Gagal mengubah password. Coba lagi atau minta link reset baru.')
-            return
+            setSuccess(true)
+            setTimeout(() => {
+                router.push('/')
+                router.refresh()
+            }, 2000)
+        } catch (err: any) {
+            setError(err.message || 'Terjadi kesalahan sistem.')
+        } finally {
+            setLoading(false)
         }
-
-        setSuccess(true)
-        setTimeout(() => {
-            router.push('/')
-            router.refresh()
-        }, 2000)
     }
 
     // Session error — link invalid/expired

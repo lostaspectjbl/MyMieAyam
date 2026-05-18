@@ -213,7 +213,7 @@ export default function ResetPasswordPage() {
                                 required
                                 minLength={6}
                                 placeholder="Minimal 6 karakter"
-                                className="w-full pl-11 pr-11 py-3 bg-warm/50 dark:bg-dark/40 border border-brown/10 dark:border-warm/10 rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                                className="w-full pl-11 pr-11 py-3 bg-brown/5 dark:bg-dark/40 border border-brown/10 dark:border-warm/10 rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                             />
                             <button
                                 type="button"
@@ -246,7 +246,7 @@ export default function ResetPasswordPage() {
                                 required
                                 minLength={6}
                                 placeholder="Ketik ulang password baru"
-                                className="w-full pl-11 pr-11 py-3 bg-warm/50 dark:bg-dark/40 border border-brown/10 dark:border-warm/10 rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                                className="w-full pl-11 pr-11 py-3 bg-brown/5 dark:bg-dark/40 border border-brown/10 dark:border-warm/10 rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                             />
                             <button
                                 type="button"

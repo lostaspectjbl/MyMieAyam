@@ -153,7 +153,7 @@ export default function AdminWarungForm({
                     onChange={(e) => setNama(e.target.value)}
                     placeholder="Mie Ayam Pak Budi"
                     required
-                    className="w-full px-4 py-3 bg-warm/50 dark:bg-dark/40 border border-brown/10 dark:border-warm/10 rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                    className="w-full px-4 py-3 bg-brown/5 dark:bg-dark/40 border border-brown/10 dark:border-warm/10 rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                 />
             </div>
 
@@ -167,7 +167,7 @@ export default function AdminWarungForm({
                     onChange={(e) => setAlamat(e.target.value)}
                     placeholder="Jl. Raya Singosari No. 10"
                     required
-                    className="w-full px-4 py-3 bg-warm/50 dark:bg-dark/40 border border-brown/10 dark:border-warm/10 rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                    className="w-full px-4 py-3 bg-brown/5 dark:bg-dark/40 border border-brown/10 dark:border-warm/10 rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                 />
             </div>
 
@@ -180,7 +180,7 @@ export default function AdminWarungForm({
                     onChange={(e) => setDeskripsi(e.target.value)}
                     placeholder="Deskripsi warung..."
                     rows={3}
-                    className="w-full px-4 py-3 bg-warm/50 dark:bg-dark/40 border border-brown/10 dark:border-warm/10 rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none"
+                    className="w-full px-4 py-3 bg-brown/5 dark:bg-dark/40 border border-brown/10 dark:border-warm/10 rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none"
                 />
             </div>
 
@@ -195,7 +195,7 @@ export default function AdminWarungForm({
                         handleMapsInput(e.target.value)
                     }}
                     placeholder="https://www.google.com/maps/embed?pb=..."
-                    className={`w-full px-4 py-3 bg-warm/50 dark:bg-dark/40 border rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${
+                    className={`w-full px-4 py-3 bg-brown/5 dark:bg-dark/40 border rounded-xl text-brown dark:text-warm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${
                         mapsError
                             ? 'border-red-400 dark:border-red-500'
                             : 'border-brown/10 dark:border-warm/10'

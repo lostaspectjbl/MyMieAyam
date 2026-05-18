@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Override Tailwind v4 default media-query dark mode to use class-based strategy */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ===== MMA Custom Theme ===== */
 @theme inline {
   --color-primary: #E85D24;

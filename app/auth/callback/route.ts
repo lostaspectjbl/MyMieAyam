@@ -14,8 +14,13 @@ export async function GET(request: Request) {
         if (!error) {
             return NextResponse.redirect(`${origin}${next}`)
         }
+        
+        // Log error jika ada masalah saat menukar kode
+        console.error("Auth Callback Error (exchangeCodeForSession):", error.message)
+        return NextResponse.redirect(`${origin}/auth/login?error=${encodeURIComponent(error.message)}`)
     }
 
-    // Redirect ke login jika terjadi error atau code tidak valid
-    return NextResponse.redirect(`${origin}/auth/login?error=Invalid_or_expired_link`)
+    // Redirect ke login jika tidak ada code parameter (misalnya menggunakan implicit flow)
+    console.error("Auth Callback Error: Missing 'code' parameter in URL.")
+    return NextResponse.redirect(`${origin}/auth/login?error=Invalid_or_missing_code`)
 }

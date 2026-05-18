@@ -14,6 +14,7 @@ import {
     Heart,
     Shield,
     UtensilsCrossed,
+    User,
 } from 'lucide-react'
 import type { Profile } from '@/types'
 
@@ -148,9 +149,10 @@ export default function Navbar() {
 
                         {user ? (
                             <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-brown dark:text-warm/90">
+                                <Link href="/profile" className="text-sm font-medium text-brown dark:text-warm/90 hover:text-primary transition-colors flex items-center gap-1.5">
+                                    <User className="w-4 h-4" />
                                     {profile?.username || user.email?.split('@')[0]}
-                                </span>
+                                </Link>
                                 <button
                                     onClick={handleLogout}
                                     className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"
@@ -240,9 +242,10 @@ export default function Navbar() {
                         <div className="border-t border-brown/10 dark:border-warm/10 mt-2 pt-2">
                             {user ? (
                                 <div className="flex flex-col gap-2">
-                                    <span className="px-4 text-sm font-medium text-muted">
+                                    <Link href="/profile" onClick={() => setIsOpen(false)} className="px-4 text-sm font-medium text-muted hover:text-primary transition-colors flex items-center gap-1.5">
+                                        <User className="w-4 h-4" />
                                         {profile?.username || user.email?.split('@')[0]}
-                                    </span>
+                                    </Link>
                                     <button
                                         onClick={handleLogout}
                                         className="mx-4 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"

@@ -58,6 +58,25 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
         if (!confirm('Yakin ingin menghapus warung ini? Semua foto dan review akan ikut terhapus.'))
             return
 
+        // Ambil semua foto dari warung ini untuk dihapus file fisiknya
+        const { data: fotos } = await supabase
+            .from('warung_foto')
+            .select('foto_url')
+            .eq('warung_id', id)
+
+        if (fotos && fotos.length > 0) {
+            const paths = fotos
+                .map(f => {
+                    const parts = f.foto_url.split('/warung-photos/')
+                    return parts.length === 2 ? parts[1] : null
+                })
+                .filter(Boolean) as string[]
+
+            if (paths.length > 0) {
+                await supabase.storage.from('warung-photos').remove(paths)
+            }
+        }
+
         // Optimistic: hapus dari state dulu, baru delete di DB
         setWarungs(prev => prev.filter(w => w.id !== id))
         await supabase.from('warung').delete().eq('id', id)
@@ -113,6 +132,18 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
 
     const handleDeletePhoto = async (photoId: string) => {
         if (!confirm('Hapus foto ini?')) return
+
+        // Cari foto yang akan dihapus dari state lokal
+        const photoToDelete = photos.find(p => p.id === photoId)
+        if (photoToDelete) {
+            const parts = photoToDelete.foto_url.split('/warung-photos/')
+            if (parts.length === 2) {
+                const filePath = parts[1]
+                // Hapus file fisik dari storage
+                await supabase.storage.from('warung-photos').remove([filePath])
+            }
+        }
+
         await supabase.from('warung_foto').delete().eq('id', photoId)
         if (photoWarungId) fetchPhotos(photoWarungId)
     }

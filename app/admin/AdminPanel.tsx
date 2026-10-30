@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { revalidateWarungCache } from '@/app/actions/warung'
 import AdminWarungForm from '@/components/AdminWarungForm'
@@ -19,6 +18,7 @@ import {
     ChevronDown,
     ChevronUp,
     UtensilsCrossed,
+    Star,
 } from 'lucide-react'
 import type { Warung, WarungFoto } from '@/types'
 
@@ -32,37 +32,56 @@ type WarungData = {
 
 export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[] }) {
     const [warungs, setWarungs] = useState<Warung[]>(initialWarungs)
-    const [loading, setLoading] = useState(false)
     const [activeTab, setActiveTab] = useState<'list' | 'add'>('list')
     const [editWarung, setEditWarung] = useState<Warung | null>(null)
     const [photoWarungId, setPhotoWarungId] = useState<string | null>(null)
     const [photos, setPhotos] = useState<WarungFoto[]>([])
     const [photosLoading, setPhotosLoading] = useState(false)
+    const [photosError, setPhotosError] = useState('')
+    const [actionError, setActionError] = useState('')
+    const [thumbLoading, setThumbLoading] = useState<string | null>(null)
     const supabase = useMemo(() => createClient(), [])
-    const router = useRouter()
 
-    const fetchWarungs = async () => {
-        setLoading(true)
-        const { data } = await supabase
-            .from('warung')
-            .select('*')
-            .order('created_at', { ascending: false })
-        setWarungs((data as Warung[]) || [])
-        setLoading(false)
+    const refreshPublicCache = () => {
+        setTimeout(() => {
+            void revalidateWarungCache().catch((err) => {
+                console.error('Gagal memperbarui cache warung:', err)
+            })
+        }, 0)
     }
-
-    // Tidak perlu fetch saat mount karena data sudah dari server (initialWarungs)
-    // fetchWarungs hanya dipanggil setelah ada perubahan (add/edit/delete)
 
     const handleDelete = async (id: string) => {
         if (!confirm('Yakin ingin menghapus warung ini? Semua foto dan review akan ikut terhapus.'))
             return
 
-        // Ambil semua foto dari warung ini untuk dihapus file fisiknya
-        const { data: fotos } = await supabase
+        setActionError('')
+
+        const { data: fotos, error: fetchError } = await supabase
             .from('warung_foto')
             .select('foto_url')
             .eq('warung_id', id)
+
+        if (fetchError) {
+            setActionError('Gagal mengambil data foto: ' + fetchError.message)
+            return
+        }
+
+        const { error: deleteError } = await supabase
+            .from('warung')
+            .delete()
+            .eq('id', id)
+
+        if (deleteError) {
+            setActionError('Gagal menghapus warung: ' + deleteError.message)
+            return
+        }
+
+        setWarungs(prev => prev.filter(w => w.id !== id))
+        if (photoWarungId === id) {
+            setPhotoWarungId(null)
+            setPhotos([])
+            setPhotosError('')
+        }
 
         if (fotos && fotos.length > 0) {
             const paths = fotos
@@ -73,17 +92,20 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
                 .filter(Boolean) as string[]
 
             if (paths.length > 0) {
-                await supabase.storage.from('warung-photos').remove(paths)
+                const { error: storageError } = await supabase.storage
+                    .from('warung-photos')
+                    .remove(paths)
+
+                if (storageError) {
+                    console.error('Gagal menghapus file foto:', storageError)
+                    setActionError(
+                        'Warung terhapus, tetapi sebagian file foto gagal dihapus.'
+                    )
+                }
             }
         }
 
-        // Optimistic: hapus dari state dulu, baru delete di DB
-        setWarungs(prev => prev.filter(w => w.id !== id))
-        await supabase.from('warung').delete().eq('id', id)
-        
-        // Refresh cache untuk pengunjung publik
-        await revalidateWarungCache()
-        router.refresh()
+        refreshPublicCache()
     }
 
     const handleEditSuccess = (updated?: WarungData) => {
@@ -92,8 +114,7 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
             setWarungs(prev =>
                 prev.map(w => w.id === updated.id ? { ...w, ...updated } : w)
             )
-            // Refresh cache untuk pengunjung publik
-            revalidateWarungCache().then(() => router.refresh())
+            refreshPublicCache()
         }
         setEditWarung(null)
         setActiveTab('list')
@@ -103,20 +124,27 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
         if (created) {
             // Prepend ke list lokal
             setWarungs(prev => [created as Warung, ...prev])
-            // Refresh cache untuk pengunjung publik
-            revalidateWarungCache().then(() => router.refresh())
+            refreshPublicCache()
         }
         setActiveTab('list')
     }
 
     const fetchPhotos = async (warungId: string) => {
         setPhotosLoading(true)
-        const { data } = await supabase
+        setPhotosError('')
+        const { data, error } = await supabase
             .from('warung_foto')
             .select('*')
             .eq('warung_id', warungId)
             .order('urutan', { ascending: true })
-        setPhotos((data as WarungFoto[]) || [])
+
+        if (error) {
+            console.error('Gagal memuat foto:', error)
+            setPhotosError('Gagal memuat foto: ' + error.message)
+            setPhotos([])
+        } else {
+            setPhotos((data as WarungFoto[]) || [])
+        }
         setPhotosLoading(false)
     }
 
@@ -124,6 +152,7 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
         if (photoWarungId === warungId) {
             setPhotoWarungId(null)
             setPhotos([])
+            setPhotosError('')
         } else {
             setPhotoWarungId(warungId)
             await fetchPhotos(warungId)
@@ -133,19 +162,101 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
     const handleDeletePhoto = async (photoId: string) => {
         if (!confirm('Hapus foto ini?')) return
 
-        // Cari foto yang akan dihapus dari state lokal
+        setActionError('')
         const photoToDelete = photos.find(p => p.id === photoId)
+
+        const { error: deleteError } = await supabase
+            .from('warung_foto')
+            .delete()
+            .eq('id', photoId)
+
+        if (deleteError) {
+            setActionError('Gagal menghapus foto: ' + deleteError.message)
+            return
+        }
+
         if (photoToDelete) {
             const parts = photoToDelete.foto_url.split('/warung-photos/')
             if (parts.length === 2) {
-                const filePath = parts[1]
-                // Hapus file fisik dari storage
-                await supabase.storage.from('warung-photos').remove([filePath])
+                const { error: storageError } = await supabase.storage
+                    .from('warung-photos')
+                    .remove([parts[1]])
+
+                if (storageError) {
+                    console.error('Gagal menghapus file foto:', storageError)
+                    setActionError(
+                        'Foto terhapus, tetapi file di storage gagal dihapus.'
+                    )
+                }
             }
         }
 
-        await supabase.from('warung_foto').delete().eq('id', photoId)
-        if (photoWarungId) fetchPhotos(photoWarungId)
+        if (photoWarungId) await fetchPhotos(photoWarungId)
+        refreshPublicCache()
+    }
+
+    const handleSetThumbnail = async (photo: WarungFoto) => {
+        const currentThumb = photos[0]
+        if (!currentThumb || currentThumb.id === photo.id || thumbLoading) return
+
+        setThumbLoading(photo.id)
+        setPhotosError('')
+
+        const previousThumbOrder = currentThumb.urutan
+        let currentMoved = false
+
+        try {
+            const { data: moved, error: moveError } = await supabase
+                .from('warung_foto')
+                .update({ urutan: photo.urutan })
+                .eq('id', currentThumb.id)
+                .select('id')
+
+            if (moveError || !moved?.length) {
+                setPhotosError(
+                    'Gagal memindahkan thumbnail: ' +
+                    (moveError?.message ?? 'akses ditolak')
+                )
+                return
+            }
+
+            currentMoved = true
+
+            const { data: promoted, error: promoteError } = await supabase
+                .from('warung_foto')
+                .update({ urutan: 0 })
+                .eq('id', photo.id)
+                .select('id')
+
+            if (promoteError || !promoted?.length) {
+                await supabase
+                    .from('warung_foto')
+                    .update({ urutan: previousThumbOrder })
+                    .eq('id', currentThumb.id)
+
+                currentMoved = false
+                setPhotosError(
+                    'Gagal menjadikan thumbnail: ' +
+                    (promoteError?.message ?? 'akses ditolak')
+                )
+                return
+            }
+
+            currentMoved = false
+            await fetchPhotos(photo.warung_id)
+            refreshPublicCache()
+        } catch (err) {
+            console.error('Gagal mengatur thumbnail:', err)
+            if (currentMoved) {
+                await supabase
+                    .from('warung_foto')
+                    .update({ urutan: previousThumbOrder })
+                    .eq('id', currentThumb.id)
+            }
+            setPhotosError('Gagal mengatur thumbnail. Coba lagi.')
+        } finally {
+            setThumbLoading(null)
+        }
     }
 
     return (
@@ -164,6 +275,15 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
                     </p>
                 </div>
             </div>
+
+            {actionError && (
+                <p
+                    className="mb-6 text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3"
+                    role="alert"
+                >
+                    {actionError}
+                </p>
+            )}
 
             {/* Tabs */}
             <div className="flex gap-2 mb-8">
@@ -216,11 +336,7 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
             {/* Warung List */}
             {activeTab === 'list' && !editWarung && (
                 <div className="space-y-4">
-                    {loading ? (
-                        <div className="flex justify-center py-12">
-                            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                        </div>
-                    ) : warungs.length === 0 ? (
+                    {warungs.length === 0 ? (
                         <div className="text-center py-16">
                             <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-4">
                                 <UtensilsCrossed className="w-8 h-8 text-primary/40" />
@@ -285,6 +401,12 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
                                             KELOLA FOTO
                                         </h4>
 
+                                        {photosError && (
+                                            <p className="text-xs text-red-500 bg-red-500/10 rounded-lg px-3 py-2">
+                                                {photosError}
+                                            </p>
+                                        )}
+
                                         {photosLoading ? (
                                             <div className="flex justify-center py-4">
                                                 <Loader2 className="w-5 h-5 text-primary animate-spin" />
@@ -293,42 +415,70 @@ export default function AdminPanel({ initialWarungs }: { initialWarungs: Warung[
                                             <>
                                                 {/* Existing Photos */}
                                                 {photos.length > 0 && (
-                                                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                                                        {photos.map((photo) => (
-                                                            <div
-                                                                key={photo.id}
-                                                                className="relative aspect-square rounded-lg overflow-hidden group"
-                                                            >
-                                                                <Image
-                                                                    src={photo.foto_url}
-                                                                    alt={`Foto ${photo.urutan}`}
-                                                                    fill
-                                                                    className="object-cover"
-                                                                    sizes="100px"
-                                                                />
-                                                                {photo.urutan === 0 && (
-                                                                    <span className="absolute top-1 left-1 bg-primary text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
-                                                                        Thumb
-                                                                    </span>
-                                                                )}
-                                                                <button
-                                                                    onClick={() => handleDeletePhoto(photo.id)}
-                                                                    className="absolute top-1 right-1 p-1 bg-red-500/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    <>
+                                                        {photos.length > 1 && (
+                                                            <p className="text-xs text-muted dark:text-warm/40">
+                                                                Klik tombol Thumbnail pada foto untuk menjadikannya foto utama.
+                                                            </p>
+                                                        )}
+                                                        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                                                            {photos.map((photo, index) => (
+                                                                <div
+                                                                    key={photo.id}
+                                                                    className="relative aspect-square rounded-lg overflow-hidden group"
                                                                 >
-                                                                    <X className="w-3 h-3" />
-                                                                </button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                                                    <Image
+                                                                        src={photo.foto_url}
+                                                                        alt={`Foto ${index + 1}`}
+                                                                        fill
+                                                                        className="object-cover"
+                                                                        sizes="100px"
+                                                                    />
+                                                                    {index === 0 && (
+                                                                        <span className="absolute top-1 left-1 bg-primary text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
+                                                                            Thumbnail
+                                                                        </span>
+                                                                    )}
+                                                                    <button
+                                                                        onClick={() => handleDeletePhoto(photo.id)}
+                                                                        className="absolute top-1 right-1 p-1 bg-red-500/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                        type="button"
+                                                                        aria-label={`Hapus foto ${index + 1}`}
+                                                                    >
+                                                                        <X className="w-3 h-3" />
+                                                                    </button>
+                                                                    {index !== 0 && (
+                                                                        <button
+                                                                            onClick={() => handleSetThumbnail(photo)}
+                                                                            disabled={thumbLoading !== null}
+                                                                            className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/65 text-white text-[10px] py-1 transition-opacity disabled:cursor-wait disabled:opacity-50 sm:opacity-0 sm:group-hover:opacity-100"
+                                                                            type="button"
+                                                                            aria-label={`Jadikan foto ${index + 1} sebagai thumbnail`}
+                                                                        >
+                                                                            {thumbLoading === photo.id ? (
+                                                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                                            ) : (
+                                                                                <Star className="w-3 h-3" />
+                                                                            )}
+                                                                            Thumbnail
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </>
                                                 )}
-
-                                                {/* Upload New */}
-                                                <PhotoUpload
-                                                    warungId={w.id}
-                                                    onUploadComplete={() => fetchPhotos(w.id)}
-                                                />
                                             </>
                                         )}
+
+                                        {/* Upload New */}
+                                        <PhotoUpload
+                                            warungId={w.id}
+                                            onUploadComplete={() => {
+                                                void fetchPhotos(w.id)
+                                                refreshPublicCache()
+                                            }}
+                                        />
                                     </div>
                                 )}
                             </div>

@@ -34,7 +34,7 @@ export type ReviewWithProfile = Review & {
   profiles: {
     username: string | null
     avatar_url: string | null
-  }
+  } | null
 }
 
 export type Favorit = {

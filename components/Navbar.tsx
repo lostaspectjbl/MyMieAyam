@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
@@ -18,55 +18,52 @@ import {
 } from 'lucide-react'
 import type { Profile } from '@/types'
 
+const emptySubscribe = () => () => {}
+
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false)
     const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
     const [profile, setProfile] = useState<Profile | null>(null)
-    const [mounted, setMounted] = useState(false)
+    const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
     const { theme, setTheme } = useTheme()
     const router = useRouter()
     // useMemo agar satu instance stabil sepanjang lifecycle Navbar
     const supabase = useMemo(() => createClient(), [])
 
     useEffect(() => {
-        setMounted(true)
-
-        const getUser = async () => {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser()
-            if (user) {
-                setUser(user)
-                const { data: profileData } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', user.id)
-                    .single()
-                if (profileData) setProfile(profileData)
-            }
-        }
-
-        getUser()
-
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (session?.user) {
-                setUser(session.user)
-                const { data: profileData } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', session.user.id)
-                    .single()
-                if (profileData) setProfile(profileData)
-            } else {
-                setUser(null)
-                setProfile(null)
-            }
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null)
+            if (!session?.user) setProfile(null)
         })
 
         return () => subscription.unsubscribe()
-    }, [])
+    }, [supabase])
+
+    const userId = user?.id
+
+    useEffect(() => {
+        if (!userId) return
+
+        let cancelled = false
+
+        const loadProfile = async () => {
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single()
+
+            if (!cancelled && profileData) setProfile(profileData)
+        }
+
+        void loadProfile()
+
+        return () => {
+            cancelled = true
+        }
+    }, [userId, supabase])
 
     const handleLogout = async () => {
         await supabase.auth.signOut()

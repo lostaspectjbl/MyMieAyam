@@ -1,27 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Send, Loader2, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import StarRating from './StarRating'
+
+type ReviewFormReview = {
+    id: string
+    rating: number
+    komentar: string | null
+}
 
 type Props = {
     warungId: string
     userId: string
     onReviewSubmitted: () => void
+    initialReview?: ReviewFormReview
+    onCancel?: () => void
 }
 
 export default function ReviewForm({
     warungId,
     userId,
     onReviewSubmitted,
+    initialReview,
+    onCancel,
 }: Props) {
-    const [rating, setRating] = useState(0)
-    const [komentar, setKomentar] = useState('')
+    const isEditing = !!initialReview
+    const [rating, setRating] = useState(initialReview?.rating ?? 0)
+    const [komentar, setKomentar] = useState(initialReview?.komentar ?? '')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -34,26 +45,62 @@ export default function ReviewForm({
 
         setLoading(true)
 
-        const { error: submitError } = await supabase.from('reviews').insert({
-            warung_id: warungId,
-            user_id: userId,
-            rating,
-            komentar: komentar.trim() || null,
-        })
-
-        setLoading(false)
-
-        if (submitError) {
-            if (submitError.code === '23505') {
-                setError('Kamu sudah pernah review warung ini')
-            } else {
-                setError('Gagal mengirim review. Coba lagi nanti.')
+        try {
+            const payload = {
+                rating,
+                komentar: komentar.trim() || null,
             }
-            return
-        }
 
-        setSuccess(true)
-        onReviewSubmitted()
+            const { data: savedRows, error: submitError } = initialReview
+                ? await supabase
+                      .from('reviews')
+                      .update(payload)
+                      .eq('id', initialReview.id)
+                      .eq('user_id', userId)
+                      .select('id')
+                : await supabase
+                      .from('reviews')
+                      .insert({
+                          ...payload,
+                          warung_id: warungId,
+                          user_id: userId,
+                      })
+                      .select('id')
+
+            if (submitError) {
+                if (submitError.code === '23505') {
+                    setError('Kamu sudah pernah review warung ini')
+                } else {
+                    setError(
+                        isEditing
+                            ? 'Gagal memperbarui review. Coba lagi nanti.'
+                            : 'Gagal mengirim review. Coba lagi nanti.'
+                    )
+                }
+                return
+            }
+
+            if (!savedRows?.length) {
+                setError(
+                    isEditing
+                        ? 'Review tidak ditemukan atau kamu tidak berhak mengubahnya.'
+                        : 'Review gagal disimpan. Coba lagi.'
+                )
+                return
+            }
+
+            setSuccess(true)
+            onReviewSubmitted()
+        } catch (err) {
+            console.error('Gagal menyimpan review:', err)
+            setError(
+                isEditing
+                    ? 'Gagal memperbarui review. Periksa koneksi lalu coba lagi.'
+                    : 'Gagal mengirim review. Periksa koneksi lalu coba lagi.'
+            )
+        } finally {
+            setLoading(false)
+        }
     }
 
     if (success) {
@@ -63,10 +110,14 @@ export default function ReviewForm({
                     <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
                 </div>
                 <p className="text-green-700 dark:text-green-400 font-medium">
-                    Review berhasil dikirim!
+                    {isEditing
+                        ? 'Review berhasil diperbarui!'
+                        : 'Review berhasil dikirim!'}
                 </p>
                 <p className="text-sm text-green-600 dark:text-green-500 mt-1">
-                    Terima kasih sudah berbagi pengalaman kamu.
+                    {isEditing
+                        ? 'Perubahan review kamu sudah disimpan.'
+                        : 'Terima kasih sudah berbagi pengalaman kamu.'}
                 </p>
             </div>
         )
@@ -105,18 +156,36 @@ export default function ReviewForm({
                 </p>
             )}
 
-            <button
-                type="submit"
-                disabled={loading || rating === 0}
-                className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-white font-medium rounded-xl transition-all"
-            >
-                {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                    <Send className="w-4 h-4" />
+            <div className="flex gap-3">
+                <button
+                    type="submit"
+                    disabled={loading || rating === 0}
+                    className="flex flex-1 items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-white font-medium rounded-xl transition-all"
+                >
+                    {loading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                        <Send className="w-4 h-4" />
+                    )}
+                    {loading
+                        ? isEditing
+                            ? 'Menyimpan...'
+                            : 'Mengirim...'
+                        : isEditing
+                          ? 'Simpan Perubahan'
+                          : 'Kirim Review'}
+                </button>
+                {onCancel && (
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        disabled={loading}
+                        className="px-5 py-3 border border-brown/15 dark:border-warm/15 text-muted dark:text-warm/60 font-medium rounded-xl hover:bg-brown/5 dark:hover:bg-warm/5 transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        Batal
+                    </button>
                 )}
-                {loading ? 'Mengirim...' : 'Kirim Review'}
-            </button>
+            </div>
         </form>
     )
 }

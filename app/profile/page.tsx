@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -16,10 +16,13 @@ import {
     UtensilsCrossed,
     Camera,
     Save,
-    X
+    X,
+    Pencil,
+    Trash2
 } from 'lucide-react'
 import type { Profile, WarungWithRating } from '@/types'
 import WarungCard from '@/components/WarungCard'
+import ReviewForm from '@/components/ReviewForm'
 
 type ReviewWithWarung = {
     id: string
@@ -47,11 +50,14 @@ export default function ProfilePage() {
     const [saving, setSaving] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [editError, setEditError] = useState('')
+    const [editingReviewId, setEditingReviewId] = useState<string | null>(null)
+    const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null)
+    const [reviewActionError, setReviewActionError] = useState('')
 
     const router = useRouter()
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
-    const fetchProfileData = async (userId: string) => {
+    const fetchProfileData = useCallback(async (userId: string) => {
         // Fetch Profile
         const { data: profileData } = await supabase
             .from('profiles')
@@ -66,19 +72,23 @@ export default function ProfilePage() {
         }
 
         // Fetch Favorites
+        // Catatan: warung_with_rating adalah VIEW (tanpa foreign key), jadi tidak bisa
+        // di-embed lewat PostgREST. Ambil favorit lalu query warung secara terpisah.
         const { data: favData } = await supabase
             .from('favorit')
-            .select(`
-                warung_id,
-                warung_with_rating (*)
-            `)
+            .select('warung_id')
             .eq('user_id', userId)
 
-        if (favData) {
-            const warungs = favData
-                .map((f: any) => f.warung_with_rating)
-                .filter((w) => w !== null) as WarungWithRating[]
-            setFavorites(warungs)
+        if (favData && favData.length > 0) {
+            const warungIds = favData.map((f) => f.warung_id)
+            const { data: warungData } = await supabase
+                .from('warung_with_rating')
+                .select('*')
+                .in('id', warungIds)
+
+            setFavorites((warungData as WarungWithRating[]) || [])
+        } else {
+            setFavorites([])
         }
 
         // Fetch Reviews
@@ -99,90 +109,181 @@ export default function ProfilePage() {
             })) as ReviewWithWarung[]
             setReviews(formattedRevs)
         }
-    }
+    }, [supabase])
 
     useEffect(() => {
+        let cancelled = false
+
         const checkAuth = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) {
-                router.push('/auth/login')
-                return
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (cancelled) return
+
+                if (!user) {
+                    router.push('/auth/login')
+                    return
+                }
+
+                setUser(user)
+                await fetchProfileData(user.id)
+            } catch (err) {
+                console.error('Gagal memuat profil:', err)
+            } finally {
+                if (!cancelled) setLoading(false)
             }
-            setUser(user)
-            await fetchProfileData(user.id)
-            setLoading(false)
         }
-        checkAuth()
-    }, [router, supabase])
+
+        void checkAuth()
+
+        return () => {
+            cancelled = true
+        }
+    }, [router, supabase, fetchProfileData])
 
     const handleSaveProfile = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!user) return
-        
+
         setSaving(true)
         setEditError('')
-        
-        const { error } = await supabase
-            .from('profiles')
-            .update({
-                username: editUsername,
-                bio: editBio
-            })
-            .eq('id', user.id)
-            
-        if (error) {
-            // If bio column doesn't exist, this will throw an error
-            setEditError(`Gagal menyimpan: ${error.message}. (Pastikan kolom 'bio' sudah dibuat di database)`)
+
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    username: editUsername,
+                    bio: editBio
+                })
+                .eq('id', user.id)
+
+            if (error) {
+                setEditError(`Gagal menyimpan: ${error.message}. (Pastikan kolom 'bio' sudah dibuat di database)`)
+                return
+            }
+
+            setProfile(prev => prev ? { ...prev, username: editUsername, bio: editBio } : null)
+            setIsEditing(false)
+        } catch (err) {
+            console.error('Gagal menyimpan profil:', err)
+            setEditError('Gagal menyimpan profil. Periksa koneksi lalu coba lagi.')
+        } finally {
             setSaving(false)
-            return
         }
-        
-        // Update local state
-        setProfile(prev => prev ? { ...prev, username: editUsername, bio: editBio } : null)
-        setIsEditing(false)
-        setSaving(false)
     }
 
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0 || !user) return
         const file = e.target.files[0]
-        
-        setUploading(true)
-        setEditError('')
-        
-        // Upload to avatars bucket
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${user.id}-${Math.random()}.${fileExt}`
-        const filePath = `${user.id}/${fileName}`
-        
-        const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(filePath, file, { upsert: true })
-            
-        if (uploadError) {
-            setEditError(`Gagal upload foto: ${uploadError.message}. (Pastikan bucket 'avatars' sudah ada dan public)`)
-            setUploading(false)
+        e.target.value = ''
+
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+        if (!allowedTypes.includes(file.type)) {
+            setEditError('Format foto harus JPG, PNG, WebP, atau GIF.')
             return
         }
-        
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath)
-            
-        // Update profile
-        const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ avatar_url: publicUrl })
-            .eq('id', user.id)
-            
-        if (updateError) {
-            setEditError(`Gagal update avatar: ${updateError.message}`)
-        } else {
-            setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null)
+
+        if (file.size > 5 * 1024 * 1024) {
+            setEditError('Ukuran foto maksimal 5 MB.')
+            return
         }
-        
-        setUploading(false)
+
+        setUploading(true)
+        setEditError('')
+
+        const fileExt =
+            file.name.split('.').pop()?.toLowerCase() ||
+            file.type.split('/')[1] ||
+            'jpg'
+        const uniqueId =
+            typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+        const fileName = `${user.id}-${uniqueId}.${fileExt}`
+        const filePath = `${user.id}/${fileName}`
+
+        try {
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file, { upsert: true })
+
+            if (uploadError) {
+                setEditError(`Gagal upload foto: ${uploadError.message}. (Pastikan bucket 'avatars' sudah ada dan public)`)
+                return
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath)
+
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ avatar_url: publicUrl })
+                .eq('id', user.id)
+
+            if (updateError) {
+                setEditError(`Gagal update avatar: ${updateError.message}`)
+                await supabase.storage.from('avatars').remove([filePath])
+                return
+            }
+
+            const oldAvatarPath = profile?.avatar_url?.split('/avatars/')[1]
+            if (oldAvatarPath && oldAvatarPath !== filePath) {
+                const { error: removeError } = await supabase.storage
+                    .from('avatars')
+                    .remove([oldAvatarPath])
+
+                if (removeError) {
+                    console.error('Gagal menghapus avatar lama:', removeError)
+                }
+            }
+
+            setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null)
+        } catch (err) {
+            console.error('Gagal upload avatar:', err)
+            setEditError('Gagal upload avatar. Periksa koneksi lalu coba lagi.')
+        } finally {
+            setUploading(false)
+        }
+    }
+
+    const handleDeleteReview = async (review: ReviewWithWarung) => {
+        if (!user || deletingReviewId) return
+        if (!confirm('Hapus review ini?')) return
+
+        setDeletingReviewId(review.id)
+        setReviewActionError('')
+
+        try {
+            const { data: deletedRows, error } = await supabase
+                .from('reviews')
+                .delete()
+                .eq('id', review.id)
+                .eq('user_id', user.id)
+                .select('id')
+
+            if (error) throw error
+            if (!deletedRows?.length) {
+                setReviewActionError(
+                    'Review tidak ditemukan atau kamu tidak berhak menghapusnya.'
+                )
+                return
+            }
+
+            setReviews(prev => prev.filter(r => r.id !== review.id))
+            if (editingReviewId === review.id) setEditingReviewId(null)
+            router.refresh()
+        } catch (err) {
+            console.error('Gagal menghapus review:', err)
+            setReviewActionError('Gagal menghapus review. Coba lagi.')
+        } finally {
+            setDeletingReviewId(null)
+        }
+    }
+
+    const handleReviewUpdated = () => {
+        setEditingReviewId(null)
+        if (user) void fetchProfileData(user.id)
+        router.refresh()
     }
 
     if (loading) {
@@ -240,7 +341,7 @@ export default function ProfilePage() {
                                 )}
                                 <input 
                                     type="file" 
-                                    accept="image/*" 
+                                    accept="image/jpeg,image/png,image/webp,image/gif"
                                     className="hidden" 
                                     onChange={handleAvatarUpload}
                                     disabled={uploading}
@@ -265,7 +366,7 @@ export default function ProfilePage() {
 
                                 {profile.bio && (
                                     <p className="text-brown/80 dark:text-warm/80 text-sm md:text-base max-w-lg mx-auto md:mx-0 bg-brown/5 dark:bg-warm/5 p-4 rounded-xl border border-brown/10 dark:border-warm/5">
-                                        "{profile.bio}"
+                                        &ldquo;{profile.bio}&rdquo;
                                     </p>
                                 )}
                                 
@@ -410,13 +511,22 @@ export default function ProfilePage() {
 
                     {activeTab === 'review' && (
                         <div className="animate-fade-in">
+                            {reviewActionError && (
+                                <p
+                                    className="mb-4 text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3"
+                                    role="alert"
+                                >
+                                    {reviewActionError}
+                                </p>
+                            )}
+
                             {reviews.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {reviews.map((review) => (
                                         <div key={review.id} className="bg-white dark:bg-dark/60 p-6 rounded-2xl border border-brown/10 dark:border-warm/10 shadow-sm">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <Link href={`/warung/${review.warung.id}`} className="font-display text-xl text-brown dark:text-warm hover:text-primary transition-colors tracking-wide block">
+                                            <div className="flex justify-between items-start gap-3 mb-4">
+                                                <div className="min-w-0">
+                                                    <Link href={`/warung/${review.warung.id}`} className="font-display text-xl text-brown dark:text-warm hover:text-primary transition-colors tracking-wide block truncate">
                                                         {review.warung.nama}
                                                     </Link>
                                                     <div className="text-xs text-muted dark:text-warm/50 mt-1">
@@ -425,14 +535,52 @@ export default function ProfilePage() {
                                                         })}
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-1 bg-yellow-400/10 px-2 py-1 rounded-lg">
-                                                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                                                    <span className="font-bold text-yellow-600 dark:text-yellow-400 text-sm">{review.rating.toFixed(1)}</span>
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <div className="flex items-center gap-1 bg-yellow-400/10 px-2 py-1 rounded-lg">
+                                                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                                                        <span className="font-bold text-yellow-600 dark:text-yellow-400 text-sm">{review.rating.toFixed(1)}</span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingReviewId(review.id)}
+                                                        disabled={editingReviewId === review.id || deletingReviewId === review.id}
+                                                        className="p-1.5 text-muted hover:text-primary hover:bg-primary/10 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                                                        title="Edit review"
+                                                        aria-label="Edit review"
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteReview(review)}
+                                                        disabled={deletingReviewId === review.id}
+                                                        className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors disabled:cursor-wait disabled:opacity-50"
+                                                        title="Hapus review"
+                                                        aria-label="Hapus review"
+                                                    >
+                                                        {deletingReviewId === review.id ? (
+                                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        )}
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <p className="text-brown/80 dark:text-warm/80 text-sm leading-relaxed">
-                                                {review.komentar || <span className="italic text-muted">Tanpa komentar</span>}
-                                            </p>
+
+                                            {editingReviewId === review.id ? (
+                                                <ReviewForm
+                                                    key={review.id}
+                                                    warungId={review.warung.id}
+                                                    userId={user.id}
+                                                    initialReview={review}
+                                                    onReviewSubmitted={handleReviewUpdated}
+                                                    onCancel={() => setEditingReviewId(null)}
+                                                />
+                                            ) : (
+                                                <p className="text-brown/80 dark:text-warm/80 text-sm leading-relaxed">
+                                                    {review.komentar || <span className="italic text-muted">Tanpa komentar</span>}
+                                                </p>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

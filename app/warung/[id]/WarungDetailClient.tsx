@@ -10,12 +10,14 @@ type Props = {
     warungId: string
     userId?: string
     hasReviewed: boolean
+    isAdmin?: boolean
 }
 
 export default function WarungDetailClient({
     warungId,
     userId,
     hasReviewed,
+    isAdmin = false,
 }: Props) {
     const [refreshKey, setRefreshKey] = useState(0)
 
@@ -47,12 +49,18 @@ export default function WarungDetailClient({
                 ) : userId && hasReviewed ? (
                     <div className="flex items-center gap-2 bg-green-500/5 border border-green-500/20 rounded-xl px-5 py-3 text-sm text-green-700 dark:text-green-400">
                         <CheckCircle2 className="w-4 h-4 shrink-0" />
-                        Kamu sudah memberikan review untuk warung ini
+                        Kamu sudah memberikan review. Edit atau hapus lewat
+                        daftar review di bawah.
                     </div>
                 ) : null}
 
                 {/* Review List */}
-                <ReviewList warungId={warungId} refreshKey={refreshKey} />
+                <ReviewList
+                    warungId={warungId}
+                    refreshKey={refreshKey}
+                    currentUserId={userId}
+                    isAdmin={isAdmin}
+                />
             </section>
         </>
     )

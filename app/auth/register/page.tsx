@@ -41,19 +41,43 @@ export default function RegisterPage() {
 
         setLoading(true)
 
-        const { error: authError } = await supabase.auth.signUp({
-            email,
-            password,
-        })
+        try {
+            const { data, error: authError } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    emailRedirectTo: `${window.location.origin}/auth/callback?next=/`,
+                },
+            })
 
-        setLoading(false)
+            if (authError) {
+                setError(authError.message || 'Gagal mendaftar. Coba lagi.')
+                return
+            }
 
-        if (authError) {
-            setError(authError.message || 'Gagal mendaftar. Coba lagi.')
-            return
+            if (data.user?.identities?.length === 0) {
+                setError(
+                    'Email ini sudah terdaftar. Silakan login dengan password lama, atau gunakan fitur reset password.'
+                )
+                return
+            }
+
+            if (data.session) {
+                router.replace('/')
+                router.refresh()
+                return
+            }
+
+            setSuccess(true)
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : 'Gagal mendaftar. Periksa koneksi lalu coba lagi.'
+            )
+        } finally {
+            setLoading(false)
         }
-
-        setSuccess(true)
     }
 
     if (success) {
@@ -67,14 +91,14 @@ export default function RegisterPage() {
                         REGISTRASI <span className="text-green-500">BERHASIL!</span>
                     </h1>
                     <p className="text-muted dark:text-warm/60">
-                        Cek email kamu untuk verifikasi akun. Setelah verifikasi, kamu bisa
-                        login dan mulai review warung mie ayam favoritmu.
+                        Cek email kamu dan klik link verifikasi. Setelah terverifikasi,
+                        kamu akan kembali ke halaman utama dan otomatis login.
                     </p>
                     <Link
-                        href="/auth/login"
+                        href="/"
                         className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white font-medium rounded-xl transition-all"
                     >
-                        Ke Halaman Login
+                        Ke Halaman Utama
                     </Link>
                 </div>
             </div>

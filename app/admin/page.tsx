@@ -12,12 +12,9 @@ export const metadata: Metadata = {
 export default async function AdminPage() {
     const supabase = await createClient()
 
-    // Jalankan auth check + fetch warung secara paralel untuk lebih cepat
-    const [
-        { data: { user } },
-    ] = await Promise.all([
-        supabase.auth.getUser(),
-    ])
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
 
     if (!user) redirect('/auth/login')
 

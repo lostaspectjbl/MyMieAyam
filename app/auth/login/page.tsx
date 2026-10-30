@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -14,27 +14,46 @@ export default function LoginPage() {
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const router = useRouter()
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
+
+    useEffect(() => {
+        const callbackError = new URLSearchParams(window.location.search).get('error')
+
+        supabase.auth.getSession().then(({ data }) => {
+            if (callbackError) {
+                setError(`Verifikasi gagal: ${callbackError}`)
+                return
+            }
+
+            if (data.session) {
+                router.replace('/')
+            }
+        })
+    }, [router, supabase])
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
         setLoading(true)
 
-        const { error: authError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        })
+        try {
+            const { error: authError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            })
 
-        setLoading(false)
+            if (authError) {
+                setError('Email atau password salah. Coba lagi, atau reset password jika lupa.')
+                return
+            }
 
-        if (authError) {
-            setError('Email atau password salah. Coba lagi, atau reset password jika lupa.')
-            return
+            router.replace('/')
+            router.refresh()
+        } catch {
+            setError('Gagal terhubung ke server. Periksa koneksi lalu coba lagi.')
+        } finally {
+            setLoading(false)
         }
-
-        router.push('/')
-        router.refresh()
     }
 
     return (

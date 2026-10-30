@@ -22,48 +22,22 @@ export default function ResetPasswordPage() {
 
     useEffect(() => {
         let isMounted = true
-        let timeout: NodeJS.Timeout
 
-        const checkSession = async () => {
-            // Cek session dari cookie/local storage
-            const { data: { session } } = await supabase.auth.getSession()
-            
-            if (session) {
-                if (isMounted) setSessionReady(true)
-            } else {
-                // Jika tidak ada session, tunggu sebentar (mungkin hash sedang diproses)
-                // lalu cek user secara eksplisit
-                timeout = setTimeout(async () => {
-                    if (!isMounted) return
-                    
-                    // Gunakan ref atau abaikan race condition jika sudah ready lewat onAuthStateChange
-                    const { data: { user } } = await supabase.auth.getUser()
-                    
-                    if (isMounted) {
-                        if (user) {
-                            setSessionReady(true)
-                        } else {
-                            // Jika benar-benar tidak ada user, berarti link invalid
-                            setSessionError(true)
-                        }
-                    }
-                }, 2000)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+                if (!isMounted) return
+
+                if (session) {
+                    setSessionReady(true)
+                } else if (event === 'INITIAL_SESSION') {
+                    setSessionError(true)
+                }
             }
-        }
-
-        checkSession()
-
-        // Supabase SSR menangani token dari URL hash secara otomatis
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
-                if (isMounted) setSessionReady(true)
-            }
-        })
+        )
 
         return () => {
             isMounted = false
             subscription.unsubscribe()
-            if (timeout) clearTimeout(timeout)
         }
     }, [supabase])
 
@@ -98,8 +72,12 @@ export default function ResetPasswordPage() {
                 router.push('/')
                 router.refresh()
             }, 2000)
-        } catch (err: any) {
-            setError(err.message || 'Terjadi kesalahan sistem.')
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : 'Terjadi kesalahan sistem.'
+            )
         } finally {
             setLoading(false)
         }

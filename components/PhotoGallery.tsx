@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { X, ChevronLeft, ChevronRight, Camera } from 'lucide-react'
 import type { WarungFoto } from '@/types'
@@ -12,6 +12,32 @@ type Props = {
 export default function PhotoGallery({ fotos }: Props) {
     const [lightboxOpen, setLightboxOpen] = useState(false)
     const [currentIndex, setCurrentIndex] = useState(0)
+
+    useEffect(() => {
+        if (!lightboxOpen) return
+
+        const previousOverflow = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setLightboxOpen(false)
+            } else if (event.key === 'ArrowRight') {
+                setCurrentIndex((prev) => (prev + 1) % fotos.length)
+            } else if (event.key === 'ArrowLeft') {
+                setCurrentIndex(
+                    (prev) => (prev - 1 + fotos.length) % fotos.length
+                )
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+
+        return () => {
+            document.body.style.overflow = previousOverflow
+            window.removeEventListener('keydown', handleKeyDown)
+        }
+    }, [lightboxOpen, fotos.length])
 
     if (fotos.length === 0) {
         return (
@@ -31,12 +57,10 @@ export default function PhotoGallery({ fotos }: Props) {
     const openLightbox = (index: number) => {
         setCurrentIndex(index)
         setLightboxOpen(true)
-        document.body.style.overflow = 'hidden'
     }
 
     const closeLightbox = () => {
         setLightboxOpen(false)
-        document.body.style.overflow = ''
     }
 
     const goNext = () => {
@@ -62,6 +86,8 @@ export default function PhotoGallery({ fotos }: Props) {
                     <button
                         key={foto.id}
                         onClick={() => openLightbox(index)}
+                        type="button"
+                        aria-label={`Buka foto ${index + 1}`}
                         className={`relative overflow-hidden group ${index === 0 && fotos.length > 2
                                 ? 'col-span-2 row-span-2 aspect-[4/3]'
                                 : 'aspect-square'
@@ -81,10 +107,17 @@ export default function PhotoGallery({ fotos }: Props) {
 
             {/* Lightbox */}
             {lightboxOpen && (
-                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center">
+                <div
+                    className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Galeri foto"
+                >
                     {/* Close */}
                     <button
                         onClick={closeLightbox}
+                        type="button"
+                        aria-label="Tutup galeri"
                         className="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-white/10 rounded-full transition-colors z-10"
                     >
                         <X className="w-6 h-6" />
@@ -100,12 +133,16 @@ export default function PhotoGallery({ fotos }: Props) {
                         <>
                             <button
                                 onClick={goPrev}
+                                type="button"
+                                aria-label="Foto sebelumnya"
                                 className="absolute left-4 p-2 text-white/70 hover:text-white bg-white/10 rounded-full transition-colors z-10"
                             >
                                 <ChevronLeft className="w-6 h-6" />
                             </button>
                             <button
                                 onClick={goNext}
+                                type="button"
+                                aria-label="Foto berikutnya"
                                 className="absolute right-4 p-2 text-white/70 hover:text-white bg-white/10 rounded-full transition-colors z-10"
                             >
                                 <ChevronRight className="w-6 h-6" />

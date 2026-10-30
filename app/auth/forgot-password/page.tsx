@@ -9,6 +9,7 @@ export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('')
     const [loading, setLoading] = useState(false)
     const [sent, setSent] = useState(false)
+    const [slow, setSlow] = useState(false)
     const [error, setError] = useState('')
     const supabase = createClient()
 
@@ -17,18 +18,26 @@ export default function ForgotPasswordPage() {
         setError('')
         setLoading(true)
 
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
-        })
+        const slowTimer = setTimeout(() => setSlow(true), 5000)
 
-        setLoading(false)
+        try {
+            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+            })
 
-        if (resetError) {
-            setError(resetError.message || 'Gagal mengirim email reset.')
-            return
+            if (resetError) {
+                setError(resetError.message || 'Gagal mengirim email reset.')
+                return
+            }
+
+            setSent(true)
+        } catch {
+            setError('Gagal terhubung ke server. Periksa koneksi lalu coba lagi.')
+        } finally {
+            clearTimeout(slowTimer)
+            setSlow(false)
+            setLoading(false)
         }
-
-        setSent(true)
     }
 
     if (sent) {
@@ -135,6 +144,13 @@ export default function ForgotPasswordPage() {
                         )}
                         {loading ? 'Mengirim...' : 'Kirim Link Reset'}
                     </button>
+
+                    {slow && (
+                        <p className="text-xs text-muted dark:text-warm/60 text-center leading-relaxed">
+                            Pengiriman email kadang membutuhkan waktu. Tetap di halaman ini,
+                            jangan refresh — proses akan selesai otomatis.
+                        </p>
+                    )}
                 </form>
 
                 {/* Back to Login */}

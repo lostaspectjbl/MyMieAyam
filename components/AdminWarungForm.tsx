@@ -5,9 +5,6 @@ import { useState } from 'react'
 import { Loader2, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-// Singleton — dibuat sekali per halaman, tidak per mount komponen
-const supabase = createClient()
-
 type WarungData = {
     id: string
     nama: string
@@ -46,14 +43,29 @@ export default function AdminWarungForm({
             setMapsError('')
             return true
         }
-        
+
         // Tolak secara eksplisit jika mengandung tag HTML (mencegah WAF memblokir payload)
         if (url.includes('<') || url.includes('>')) {
             setMapsError('Mohon masukkan HANYA link URL-nya saja (https://...), bukan kode HTML <iframe>.')
             return false
         }
 
-        const isValid = url.includes('google.com/maps/embed') || url.includes('maps.google.com/maps')
+        let isValid = false
+        try {
+            const parsed = new URL(url)
+            const allowedHosts = new Set([
+                'www.google.com',
+                'google.com',
+                'maps.google.com',
+            ])
+            isValid =
+                parsed.protocol === 'https:' &&
+                allowedHosts.has(parsed.hostname) &&
+                parsed.pathname.startsWith('/maps')
+        } catch {
+            isValid = false
+        }
+
         setMapsError(isValid ? '' : 'URL harus berupa Google Maps Embed. Lihat panduan di bawah.')
         return isValid
     }
@@ -133,9 +145,13 @@ export default function AdminWarungForm({
 
                 if (data) onSuccess(data as WarungData)
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error('Terjadi kesalahan saat memproses form:', err)
-            setError(err.message || 'Terjadi kesalahan sistem. Silakan coba lagi.')
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : 'Terjadi kesalahan sistem. Silakan coba lagi.'
+            )
         } finally {
             setLoading(false)
         }
@@ -212,7 +228,7 @@ export default function AdminWarungForm({
                         <ol className="list-decimal list-inside space-y-0.5 text-blue-500/80 dark:text-blue-400/80">
                             <li>Buka <strong>Google Maps</strong> → cari lokasi warung</li>
                             <li>Klik <strong>Share</strong> → pilih tab <strong>Embed a map</strong></li>
-                            <li>Klik <strong>Copy HTML</strong> → ambil hanya bagian <code className="bg-blue-500/10 px-1 rounded">src="..."</code></li>
+                            <li>Klik <strong>Copy HTML</strong> → ambil hanya bagian <code className="bg-blue-500/10 px-1 rounded">src=&quot;...&quot;</code></li>
                             <li>Paste URL-nya di sini (dimulai dengan <code className="bg-blue-500/10 px-1 rounded">https://www.google.com/maps/embed</code>)</li>
                         </ol>
                     </div>

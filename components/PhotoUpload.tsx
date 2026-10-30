@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { Upload, X, Loader2, ImageIcon, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
@@ -99,6 +99,17 @@ export default function PhotoUpload({ warungId, onUploadComplete }: Props) {
     const [uploading, setUploading] = useState(false)
     const [error, setError] = useState('')
     const supabase = useMemo(() => createClient(), [])
+    const processedRef = useRef(processed)
+
+    useEffect(() => {
+        processedRef.current = processed
+    }, [processed])
+
+    useEffect(() => {
+        return () => {
+            processedRef.current.forEach((pf) => URL.revokeObjectURL(pf.preview))
+        }
+    }, [])
 
     const totalSaved = useMemo(() => {
         const orig = processed.reduce((s, f) => s + f.originalSize, 0)
@@ -137,56 +148,109 @@ export default function PhotoUpload({ warungId, onUploadComplete }: Props) {
     }
 
     const handleUpload = async () => {
-        if (processed.length === 0) return
+        if (processed.length === 0 || uploading) return
 
         setUploading(true)
         setError('')
 
-        // Get current max urutan
-        const { data: existingFotos } = await supabase
-            .from('warung_foto')
-            .select('urutan')
-            .eq('warung_id', warungId)
-            .order('urutan', { ascending: false })
-            .limit(1)
+        const filesToUpload = processed
+        const succeeded = new Set<number>()
+        const failures: string[] = []
 
-        let nextUrutan = existingFotos && existingFotos.length > 0
-            ? existingFotos[0].urutan + 1
-            : 0
+        try {
+            const { data: existingFotos, error: urutanError } = await supabase
+                .from('warung_foto')
+                .select('urutan')
+                .eq('warung_id', warungId)
+                .order('urutan', { ascending: false })
+                .limit(1)
 
-        for (const pf of processed) {
-            const fileName = `${warungId}/${Date.now()}-${pf.name}.webp`
-
-            const { error: uploadError } = await supabase.storage
-                .from('warung-photos')
-                .upload(fileName, pf.blob, {
-                    contentType: 'image/webp',
-                    cacheControl: '31536000', // cache 1 tahun — WebP sudah optimal
-                })
-
-            if (uploadError) {
-                setError(`Gagal upload ${pf.name}: ${uploadError.message}`)
-                continue
+            if (urutanError) {
+                console.error('Gagal membaca urutan foto:', urutanError)
+                setError('Gagal membaca urutan foto: ' + urutanError.message)
+                return
             }
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('warung-photos')
-                .getPublicUrl(fileName)
+            let nextUrutan = existingFotos && existingFotos.length > 0
+                ? existingFotos[0].urutan + 1
+                : 0
 
-            await supabase.from('warung_foto').insert({
-                warung_id: warungId,
-                foto_url: publicUrl,
-                urutan: nextUrutan,
-            })
+            for (const [index, pf] of filesToUpload.entries()) {
+                const extension = pf.blob.type === 'image/png' ? 'png' : 'webp'
+                const contentType = pf.blob.type || 'image/webp'
+                const safeName =
+                    pf.name
+                        .replace(/[^a-zA-Z0-9_-]+/g, '-')
+                        .replace(/-+/g, '-')
+                        .replace(/^-|-$/g, '')
+                        .slice(0, 50) || 'foto'
+                const uniqueId =
+                    typeof crypto !== 'undefined' && crypto.randomUUID
+                        ? crypto.randomUUID()
+                        : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+                const fileName = `${warungId}/${uniqueId}-${safeName}.${extension}`
 
-            nextUrutan++
+                const { error: uploadError } = await supabase.storage
+                    .from('warung-photos')
+                    .upload(fileName, await pf.blob.arrayBuffer(), {
+                        contentType,
+                        cacheControl: '31536000',
+                    })
+
+                if (uploadError) {
+                    console.error('Storage upload gagal:', uploadError)
+                    failures.push(`${pf.name}: ${uploadError.message}`)
+                    continue
+                }
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('warung-photos')
+                    .getPublicUrl(fileName)
+
+                const { error: insertError } = await supabase
+                    .from('warung_foto')
+                    .insert({
+                        warung_id: warungId,
+                        foto_url: publicUrl,
+                        urutan: nextUrutan,
+                    })
+
+                if (insertError) {
+                    console.error('Insert warung_foto gagal:', insertError)
+                    failures.push(`${pf.name}: ${insertError.message}`)
+                    await supabase.storage.from('warung-photos').remove([fileName])
+                    continue
+                }
+
+                succeeded.add(index)
+                nextUrutan++
+            }
+
+            if (failures.length > 0) {
+                setError(
+                    `Gagal mengupload ${failures.length} foto — ${failures.join(' | ')}`
+                )
+            }
+
+            if (succeeded.size > 0) {
+                filesToUpload.forEach((pf, index) => {
+                    if (succeeded.has(index)) URL.revokeObjectURL(pf.preview)
+                })
+                setProcessed((prev) =>
+                    prev.filter((_, index) => !succeeded.has(index))
+                )
+                onUploadComplete()
+            }
+        } catch (err) {
+            console.error('Upload foto gagal:', err)
+            setError(
+                err instanceof Error
+                    ? `Gagal upload foto: ${err.message}`
+                    : 'Gagal upload foto. Periksa koneksi lalu coba lagi.'
+            )
+        } finally {
+            setUploading(false)
         }
-
-        // Bebaskan semua object URL
-        processed.forEach((pf) => URL.revokeObjectURL(pf.preview))
-        setProcessed([])
-        setUploading(false)
-        onUploadComplete()
     }
 
     return (
@@ -255,7 +319,8 @@ export default function PhotoUpload({ warungId, onUploadComplete }: Props) {
                             </div>
                             <button
                                 onClick={() => removeFile(index)}
-                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                disabled={uploading}
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
                                 type="button"
                             >
                                 <X className="w-3 h-3" />

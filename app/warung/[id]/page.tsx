@@ -3,19 +3,40 @@ import { createClient } from '@/lib/supabase/server'
 import PhotoGallery from '@/components/PhotoGallery'
 import StarRating from '@/components/StarRating'
 import WarungDetailClient from './WarungDetailClient'
-import { MapPin, MessageCircle, Star } from 'lucide-react'
+import { MapPin, MessageCircle } from 'lucide-react'
 import type { WarungWithRating, WarungFoto } from '@/types'
 import type { Metadata } from 'next'
 
 // Ekstrak URL src dari HTML <iframe> jika data disimpan sebagai kode embed lengkap
 function getMapsEmbedUrl(raw: string): string {
     if (!raw) return ''
-    const trimmed = raw.trim()
-    if (trimmed.startsWith('<iframe') || trimmed.includes('src=')) {
-        const match = trimmed.match(/src=["']([^"']+)["']/)
-        if (match) return match[1]
+
+    let candidate = raw.trim()
+    if (candidate.startsWith('<iframe') || candidate.includes('src=')) {
+        const match = candidate.match(/src=["']([^"']+)["']/)
+        if (match) candidate = match[1]
     }
-    return trimmed
+
+    try {
+        const url = new URL(candidate)
+        const allowedHosts = new Set([
+            'www.google.com',
+            'google.com',
+            'maps.google.com',
+        ])
+
+        if (
+            url.protocol !== 'https:' ||
+            !allowedHosts.has(url.hostname) ||
+            !url.pathname.startsWith('/maps')
+        ) {
+            return ''
+        }
+
+        return url.toString()
+    } catch {
+        return ''
+    }
 }
 
 type Props = {
@@ -68,16 +89,26 @@ export default async function WarungDetailPage({ params }: Props) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    // Check if user already reviewed
+    // Check if user already reviewed and whether they are an admin
     let hasReviewed = false
+    let isAdmin = false
     if (user) {
-        const { data: existingReview } = await supabase
-            .from('reviews')
-            .select('id')
-            .eq('warung_id', id)
-            .eq('user_id', user.id)
-            .single()
+        const [{ data: existingReview }, { data: profile }] = await Promise.all([
+            supabase
+                .from('reviews')
+                .select('id')
+                .eq('warung_id', id)
+                .eq('user_id', user.id)
+                .maybeSingle(),
+            supabase
+                .from('profiles')
+                .select('is_admin')
+                .eq('id', user.id)
+                .single(),
+        ])
+
         hasReviewed = !!existingReview
+        isAdmin = !!profile?.is_admin
     }
 
     return (
@@ -156,6 +187,7 @@ export default async function WarungDetailPage({ params }: Props) {
                     warungId={id}
                     userId={user?.id}
                     hasReviewed={hasReviewed}
+                    isAdmin={isAdmin}
                 />
             </div>
         </div>

@@ -6,4 +6,5 @@ export async function revalidateWarungCache() {
     revalidatePath('/')
     revalidatePath('/warung')
     revalidatePath('/favorit')
+    revalidatePath('/admin')
 }
